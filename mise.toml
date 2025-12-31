@@ -72,6 +72,11 @@ dev-dependencies = "uv sync"
 # Use when: setting up local development environment, starting workflows, or testing Temporal-based functionality
 dev-server = "temporal server start-dev"
 
+# Start Temporal server (alias for dev-server)
+# Launches the Temporal development server for workflow orchestration
+# Use when: setting up local development environment, starting workflows, or testing Temporal-based functionality
+dev-temporal = "temporal server start-dev"
+
 
 # Run the Temporal worker
 # Starts the Temporal worker process to execute workflow activities

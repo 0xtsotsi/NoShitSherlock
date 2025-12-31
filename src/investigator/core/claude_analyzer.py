@@ -2,6 +2,7 @@
 Claude API integration for the Claude Investigator.
 """
 
+import os
 from anthropic import Anthropic
 from typing import Optional
 from .config import Config
@@ -9,10 +10,34 @@ from .config import Config
 
 class ClaudeAnalyzer:
     """Handles Claude API interactions for analysis."""
-    
+
     def __init__(self, api_key: str, logger):
-        self.client = Anthropic(api_key=api_key)
+        """
+        Initialize the Claude analyzer with either API or CLI mode.
+
+        Args:
+            api_key: Anthropic API key (ignored in CLI mode)
+            logger: Logger instance
+        """
         self.logger = logger
+        self.use_cli = os.getenv('USE_CLAUDE_CLI', '').lower() in ('true', '1', 'yes')
+
+        if self.use_cli:
+            # CLI mode - import and use the CLI adapter
+            from .claude_cli_adapter import ClaudeCLIClient
+            self.client = ClaudeCLIClient(logger)
+            self.mode = "CLI"
+            self.logger.warning("=" * 70)
+            self.logger.warning("CLAUDE CLI MODE ACTIVE")
+            self.logger.warning("Using Claude CLI binary instead of Anthropic API")
+            self.logger.warning("=" * 70)
+        else:
+            # API mode - use the Anthropic SDK
+            self.client = Anthropic(api_key=api_key)
+            self.mode = "API"
+            self.logger.info("Using Anthropic API for Claude requests")
+
+        self.logger.info(f"Claude Analyzer initialized in {self.mode} mode")
     
     def clean_prompt(self, prompt_template: str) -> str:
         """
@@ -85,25 +110,36 @@ class ClaudeAnalyzer:
             # Use config overrides or defaults
             claude_model = config_overrides.get("claude_model") or Config.CLAUDE_MODEL
             max_tokens = config_overrides.get("max_tokens") or Config.MAX_TOKENS
-            
-            self.logger.info("Sending analysis request to Claude API")
+
+            # Log the mode being used
+            if self.use_cli:
+                self.logger.info(f"[{self.mode} MODE] Sending analysis request via Claude CLI")
+            else:
+                self.logger.info(f"[{self.mode} MODE] Sending analysis request to Claude API")
+
             self.logger.debug(f"Using model: {claude_model}, max_tokens: {max_tokens}")
-            
+
             response = self.client.messages.create(
                 model=claude_model,
                 max_tokens=max_tokens,
                 messages=[{"role": "user", "content": prompt}]
             )
-            
+
             analysis_text = response.content[0].text
-            self.logger.info(f"Received analysis from Claude ({len(analysis_text)} characters)")
+
+            if self.use_cli:
+                self.logger.info(f"[{self.mode} MODE] Received analysis from Claude CLI ({len(analysis_text)} characters)")
+            else:
+                self.logger.info(f"[{self.mode} MODE] Received analysis from Claude API ({len(analysis_text)} characters)")
+
             self.logger.debug(f"Analysis preview (first 1000 chars): {analysis_text[:1000]}...")
-            
+
             return analysis_text
-            
+
         except Exception as e:
-            self.logger.error(f"Claude API request failed: {str(e)}")
-            raise Exception(f"Failed to get analysis from Claude: {str(e)}")
+            error_prefix = f"[{self.mode} MODE] "
+            self.logger.error(f"{error_prefix}Claude request failed: {str(e)}")
+            raise Exception(f"{error_prefix}Failed to get analysis from Claude: {str(e)}")
     
     def analyze_structure(self, repo_structure: str, prompt_template: str) -> str:
         """
