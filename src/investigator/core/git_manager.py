@@ -166,67 +166,46 @@ class GitRepositoryManager:
                 raise
     
     def _clone_repository(self, repo_location: str, target_dir: str) -> str:
-        """Clone a new repository."""
+        """Clone a new repository using shallow clone by default to reduce memory usage."""
         self._ensure_clean_directory(target_dir)
-        
+
         try:
-            import git
             # Log sanitized URL without exposing sensitive information
             safe_url = self._sanitize_url_for_logging(repo_location)
             self.logger.info(f"Cloning repository from: {safe_url}")
-            
+
             if self.github_token and self.github_token in repo_location:
                 self.logger.info("Using GitHub token authentication for private repository access")
-            
-            git.Repo.clone_from(repo_location, target_dir)
-            self.logger.info(f"Repository successfully cloned to: {target_dir}")
-            return target_dir
-            
+
+            # Use shallow clone by default to reduce memory usage and prevent OOM issues
+            # This clones only the latest commit instead of full history
+            self.logger.info("Using shallow clone (--depth 1) to minimize memory usage")
+            return self._shallow_clone_fallback(repo_location, target_dir)
+
         except Exception as e:
-            import git
-            if isinstance(e, git.exc.GitCommandError):
-                self.logger.error(f"Git clone failed: {str(e)}")
-                
-                # Check if it's a resource issue (exit code -9 or similar)
-                if "exit code(-9)" in str(e) or "Killed" in str(e):
-                    self.logger.warning("Detected potential resource issue, attempting shallow clone")
-                    # Clean up failed attempt
-                    if os.path.exists(target_dir):
-                        shutil.rmtree(target_dir, ignore_errors=True)
-                    
-                    # Try shallow clone as fallback
-                    try:
-                        return self._shallow_clone_fallback(repo_location, target_dir)
-                    except Exception as shallow_error:
-                        self.logger.error(f"Shallow clone also failed: {str(shallow_error)}")
-                        raise Exception(f"Failed to clone repository even with shallow clone: {str(shallow_error)}")
-                
-                # Don't include the full error message as it might contain the token
-                if self.github_token and "Authentication failed" in str(e):
-                    raise Exception("Failed to clone repository: Authentication failed. Please check your GITHUB_TOKEN.")
-                
-                # Sanitize error message to remove any tokens
-                error_msg = str(e)
-                if self.github_token and self.github_token in error_msg:
-                    error_msg = error_msg.replace(self.github_token, '***HIDDEN***')
-                raise Exception(f"Failed to clone repository: {error_msg}")
-            else:
-                raise
+            # _shallow_clone_fallback already has comprehensive error handling
+            # Just re-raise the exception with sanitized error message
+            error_msg = str(e)
+            if self.github_token and self.github_token in error_msg:
+                error_msg = error_msg.replace(self.github_token, '***HIDDEN***')
+            self.logger.error(f"Repository clone failed: {error_msg}")
+            raise
     
     def _shallow_clone_fallback(self, repo_location: str, target_dir: str) -> str:
         """
-        Perform a shallow clone as a fallback when normal clone fails due to resource constraints.
-        
+        Perform a shallow clone to minimize memory usage and prevent OOM issues.
+        This is now the primary clone method (not just a fallback).
+
         Args:
             repo_location: Repository URL to clone (with authentication if needed)
             target_dir: Target directory for the clone
-            
+
         Returns:
             Path to the cloned repository
         """
         import subprocess
-        
-        self.logger.info("Attempting shallow clone with depth=1 to reduce memory usage")
+
+        self.logger.debug("Performing shallow clone with depth=1 to reduce memory usage")
         
         # Ensure target directory is clean
         self._ensure_clean_directory(target_dir)

@@ -122,11 +122,22 @@ async def run_investigate_single_repo_workflow(client: Client, repo_identifier: 
             repositories = repos_data.get("repositories", {})
             
             if repo_identifier not in repositories:
-                logger.error(f"Repository '{repo_identifier}' not found in repos.json")
-                available_repos = list(repositories.keys())
+                # Filter out comment keys that start with underscore
+                available_repos = [key for key in repositories.keys() if not key.startswith('_')]
+
+                # Create a user-friendly error message
+                error_msg = f"\n❌ Repository '{repo_identifier}' not found in repos.json\n"
+                error_msg += f"\n📋 Available repository keys ({len(available_repos)}):\n"
+                error_msg += "   " + ", ".join(sorted(available_repos))
+                error_msg += f"\n\n💡 Tip: You can also use a direct GitHub URL instead of a key"
+                error_msg += f"\n    Example: mise investigate-one https://github.com/user/repo\n"
+
+                logger.error(error_msg)
+                print(error_msg, file=sys.stderr)
+
                 return {
-                    "status": "failed", 
-                    "error": f"Repository '{repo_identifier}' not found in repos.json. Available repositories: {available_repos}"
+                    "status": "failed",
+                    "error": error_msg
                 }
             
             repo_info = repositories[repo_identifier]
