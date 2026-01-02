@@ -4,10 +4,11 @@ Query Temporal workflow status
 Usage: python query_workflow_status.py <workflow_id> [query_type] [repo_name]
 """
 
-import sys
-import os
 import asyncio
 import logging
+import os
+import sys
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from temporalio.client import Client
@@ -17,7 +18,10 @@ from temporalio.contrib.pydantic import pydantic_data_converter
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-async def query_workflow_status(workflow_id: str, query_type: str = None, repo_name: str = None):
+
+async def query_workflow_status(
+    workflow_id: str, query_type: str | None = None, repo_name: str | None = None
+):
     """Query workflow status using Temporal client"""
 
     try:
@@ -25,44 +29,45 @@ async def query_workflow_status(workflow_id: str, query_type: str = None, repo_n
         client = await Client.connect(
             os.getenv("TEMPORAL_SERVER_URL", "localhost:7233"),
             namespace=os.getenv("TEMPORAL_NAMESPACE", "default"),
-            data_converter=pydantic_data_converter
+            data_converter=pydantic_data_converter,
         )
 
-        async with client:
-            # Get workflow handle
-            handle = client.get_workflow_handle(workflow_id)
+        # Get workflow handle (Client doesn't support async context manager)
+        handle = client.get_workflow_handle(workflow_id)
 
-            try:
-                # Try to get basic workflow info
-                desc = await handle.describe()
+        try:
+            # Try to get basic workflow info
+            desc = await handle.describe()
 
-                print(f"Workflow ID: {workflow_id}")
-                print(f"Status: {desc.status}")
-                print(f"Start Time: {desc.start_time}")
-                if desc.close_time:
-                    print(f"Close Time: {desc.close_time}")
+            print(f"Workflow ID: {workflow_id}")
+            print(f"Status: {desc.status}")
+            print(f"Start Time: {desc.start_time}")
+            if desc.close_time:
+                print(f"Close Time: {desc.close_time}")
 
-                # If workflow has a get_status query method, use it
-                if query_type:
-                    try:
-                        result = await handle.query("get_status", query_type, repo_name)
-                        print(f"Query Result ({query_type}): {result}")
-                    except Exception as e:
-                        print(f"Query failed: {e}")
-                else:
-                    # Basic status info
-                    print(f"Workflow Type: {desc.workflow_type}")
-                    print(f"Task Queue: {desc.task_queue}")
+            # If workflow has a get_status query method, use it
+            if query_type:
+                try:
+                    # Use the args parameter for multiple arguments
+                    result = await handle.query(query_type, args=[query_type, repo_name])
+                    print(f"Query Result ({query_type}): {result}")
+                except Exception as e:
+                    print(f"Query failed: {e}")
+            else:
+                # Basic status info
+                print(f"Workflow Type: {desc.workflow_type}")
+                print(f"Task Queue: {desc.task_queue}")
 
-            except Exception as e:
-                print(f"Failed to get workflow status: {e}")
-                return False
+        except Exception as e:
+            print(f"Failed to get workflow status: {e}")
+            return False
 
         return True
 
     except Exception as e:
         logger.error(f"Failed to connect to Temporal: {e}")
         return False
+
 
 async def main():
     """Main function"""
@@ -80,6 +85,7 @@ async def main():
 
     success = await query_workflow_status(workflow_id, query_type, repo_name)
     sys.exit(0 if success else 1)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

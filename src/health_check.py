@@ -11,17 +11,16 @@ Exit codes:
   1 - Unhealthy: Worker is not running or unresponsive
 """
 
-import sys
-import os
 import logging
-from pathlib import Path
+import sys
 import time
+from pathlib import Path
 
 # Setup logging to stdout for ECS
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - HEALTHCHECK - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]
+    format="%(asctime)s - HEALTHCHECK - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
 logger = logging.getLogger(__name__)
 
@@ -35,7 +34,7 @@ def check_health():
     Check if the worker is healthy by verifying:
     1. The health file exists
     2. The health file was updated recently
-    
+
     Returns:
         bool: True if healthy, False if unhealthy
     """
@@ -45,22 +44,27 @@ def check_health():
             print(f"UNHEALTHY: Health file does not exist: {HEALTH_FILE}", flush=True)
             logger.error(f"Health file does not exist: {HEALTH_FILE}")
             return False
-        
+
         # Check file modification time
         current_time = time.time()
         file_mtime = HEALTH_FILE.stat().st_mtime
         file_age = current_time - file_mtime
-        
+
         if file_age > HEALTH_TIMEOUT_SECONDS:
-            print(f"UNHEALTHY: Health file is stale (age: {file_age:.1f}s > {HEALTH_TIMEOUT_SECONDS}s)", flush=True)
-            logger.error(f"Health file is stale - last updated {file_age:.1f}s ago (threshold: {HEALTH_TIMEOUT_SECONDS}s)")
+            print(
+                f"UNHEALTHY: Health file is stale (age: {file_age:.1f}s > {HEALTH_TIMEOUT_SECONDS}s)",
+                flush=True,
+            )
+            logger.error(
+                f"Health file is stale - last updated {file_age:.1f}s ago (threshold: {HEALTH_TIMEOUT_SECONDS}s)"
+            )
             return False
-        
+
         # Worker is healthy
         print(f"HEALTHY: Worker is alive (last update: {file_age:.1f}s ago)", flush=True)
         logger.info(f"Worker is healthy - health file updated {file_age:.1f}s ago")
         return True
-        
+
     except Exception as e:
         print(f"UNHEALTHY: Health check error: {e}", flush=True)
         logger.error(f"Health check failed with error: {e}", exc_info=True)
@@ -70,7 +74,7 @@ def check_health():
 if __name__ == "__main__":
     # Perform health check
     is_healthy = check_health()
-    
+
     # Exit with appropriate code for Docker/ECS
     if is_healthy:
         sys.exit(0)  # Exit code 0 = Healthy

@@ -1,5 +1,6 @@
-import sys
 import os
+import sys
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import asyncio
@@ -9,12 +10,13 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def validate_environment():
     """Validate all required environment variables and configuration before starting worker."""
     logger.info("🔍 Starting environment validation...")
 
-    errors = []
-    warnings = []
+    errors: list[str] = []
+    warnings: list[str] = []
 
     # Import config to access its validation methods
     try:
@@ -25,67 +27,84 @@ def validate_environment():
 
     # Validate Claude configuration
     try:
-        claude_model = os.getenv('CLAUDE_MODEL', Config.CLAUDE_MODEL)
+        claude_model = os.getenv("CLAUDE_MODEL", Config.CLAUDE_MODEL)
         Config.validate_claude_model(claude_model)
         logger.info(f"  ✓ Claude model: {claude_model}")
     except ValueError as e:
         errors.append(f"Invalid Claude model: {e}")
 
     try:
-        max_tokens = int(os.getenv('MAX_TOKENS', Config.MAX_TOKENS))
+        max_tokens = int(os.getenv("MAX_TOKENS", Config.MAX_TOKENS))
         Config.validate_max_tokens(max_tokens)
         logger.info(f"  ✓ Max tokens: {max_tokens}")
     except ValueError as e:
         errors.append(f"Invalid max tokens: {e}")
 
-    # Required API keys
-    if not os.getenv('ANTHROPIC_API_KEY'):
-        errors.append("ANTHROPIC_API_KEY environment variable is required for Claude API access")
-    else:
-        logger.info("  ✓ Anthropic API key present")
+    # Claude configuration - check for CLI mode or API key
+    use_claude_cli = os.getenv("USE_CLAUDE_CLI", "false").lower() == "true"
+    if use_claude_cli:
+        logger.info("  ✓ Claude CLI mode enabled (subscription-based)")
+        # Validate Claude CLI is available
+        import shutil
 
-    if not os.getenv('GITHUB_TOKEN'):
+        claude_path = shutil.which("claude")
+        if claude_path:
+            logger.info(f"  ✓ Claude CLI found at: {claude_path}")
+        else:
+            errors.append(
+                "USE_CLAUDE_CLI=true but Claude CLI not found. "
+                "Install with: npm install -g @anthropic-ai/claude-code"
+            )
+    elif not os.getenv("ANTHROPIC_API_KEY"):
+        errors.append(
+            "ANTHROPIC_API_KEY environment variable is required for Claude API access "
+            "(or set USE_CLAUDE_CLI=true to use subscription mode)"
+        )
+    else:
+        logger.info("  ✓ Anthropic API key present (API mode)")
+
+    if not os.getenv("GITHUB_TOKEN"):
         errors.append("GITHUB_TOKEN environment variable is required for GitHub API access")
     else:
         logger.info("  ✓ GitHub token present")
 
     # AWS configuration for DynamoDB
-    if not os.getenv('AWS_ACCESS_KEY_ID'):
+    if not os.getenv("AWS_ACCESS_KEY_ID"):
         errors.append("AWS_ACCESS_KEY_ID environment variable is required for DynamoDB access")
     else:
         logger.info("  ✓ AWS access key present")
 
-    if not os.getenv('AWS_SECRET_ACCESS_KEY'):
+    if not os.getenv("AWS_SECRET_ACCESS_KEY"):
         errors.append("AWS_SECRET_ACCESS_KEY environment variable is required for DynamoDB access")
     else:
         logger.info("  ✓ AWS secret key present")
 
-    if not os.getenv('AWS_DEFAULT_REGION'):
+    if not os.getenv("AWS_DEFAULT_REGION"):
         warnings.append("AWS_DEFAULT_REGION not set, using default 'us-east-1'")
         logger.info("  ⚠ AWS region not set, will use 'us-east-1'")
     else:
         logger.info(f"  ✓ AWS region: {os.getenv('AWS_DEFAULT_REGION')}")
 
     # Temporal configuration
-    temporal_url = os.getenv('TEMPORAL_SERVER_URL', 'localhost:7233')
+    temporal_url = os.getenv("TEMPORAL_SERVER_URL", "localhost:7233")
     logger.info(f"  ✓ Temporal server URL: {temporal_url}")
 
-    temporal_namespace = os.getenv('TEMPORAL_NAMESPACE', 'default')
+    temporal_namespace = os.getenv("TEMPORAL_NAMESPACE", "default")
     logger.info(f"  ✓ Temporal namespace: {temporal_namespace}")
 
-    temporal_queue = os.getenv('TEMPORAL_TASK_QUEUE', 'investigate-task-queue')
+    temporal_queue = os.getenv("TEMPORAL_TASK_QUEUE", "investigate-task-queue")
     logger.info(f"  ✓ Temporal task queue: {temporal_queue}")
 
-    temporal_identity = os.getenv('TEMPORAL_IDENTITY', 'investigate-worker')
+    temporal_identity = os.getenv("TEMPORAL_IDENTITY", "investigate-worker")
     logger.info(f"  ✓ Temporal identity: {temporal_identity}")
 
-    if os.getenv('TEMPORAL_API_KEY'):
+    if os.getenv("TEMPORAL_API_KEY"):
         logger.info("  ✓ Temporal API key present (for Temporal Cloud)")
     else:
         logger.info("  ⚠ No Temporal API key - assuming local Temporal server")
 
     # Prompt context storage configuration
-    prompt_storage = os.getenv('PROMPT_CONTEXT_STORAGE', 'auto')
+    prompt_storage = os.getenv("PROMPT_CONTEXT_STORAGE", "auto")
     logger.info(f"  ✓ Prompt context storage: {prompt_storage}")
 
     # Architecture hub configuration
@@ -96,26 +115,26 @@ def validate_environment():
     logger.info(f"  ✓ Architecture hub web URL: {arch_hub_web_url}")
 
     # Git configuration
-    git_user = os.getenv('GIT_USER_NAME', 'Architecture Bot')
-    git_email = os.getenv('GIT_USER_EMAIL', 'architecture-bot@your-org.com')
+    git_user = os.getenv("GIT_USER_NAME", "Architecture Bot")
+    git_email = os.getenv("GIT_USER_EMAIL", "architecture-bot@your-org.com")
     logger.info(f"  ✓ Git user: {git_user} <{git_email}>")
 
     # Check for any missing DynamoDB table name (might be needed)
-    dynamodb_table = os.getenv('DYNAMODB_TABLE_NAME')
+    dynamodb_table = os.getenv("DYNAMODB_TABLE_NAME")
     if not dynamodb_table:
         warnings.append("DYNAMODB_TABLE_NAME not set - some features may not work properly")
         logger.info("  ⚠ DynamoDB table name not set")
 
     # Configuration validation
     try:
-        chunk_size = int(os.getenv('WORKFLOW_CHUNK_SIZE', Config.WORKFLOW_CHUNK_SIZE))
+        chunk_size = int(os.getenv("WORKFLOW_CHUNK_SIZE", Config.WORKFLOW_CHUNK_SIZE))
         Config.validate_chunk_size(chunk_size)
         logger.info(f"  ✓ Workflow chunk size: {chunk_size}")
     except ValueError as e:
         errors.append(f"Invalid workflow chunk size: {e}")
 
     try:
-        sleep_hours = float(os.getenv('WORKFLOW_SLEEP_HOURS', Config.WORKFLOW_SLEEP_HOURS))
+        sleep_hours = float(os.getenv("WORKFLOW_SLEEP_HOURS", Config.WORKFLOW_SLEEP_HOURS))
         Config.validate_sleep_hours(sleep_hours)
         logger.info(f"  ✓ Workflow sleep hours: {sleep_hours}")
     except ValueError as e:
@@ -146,6 +165,7 @@ def validate_environment():
 
     return errors, warnings
 
+
 def print_error_and_exit(errors, warnings):
     """Print validation errors and exit with appropriate status."""
     if errors:
@@ -174,12 +194,22 @@ def print_error_and_exit(errors, warnings):
         print("Continuing in 3 seconds...", flush=True)
         print("=" * 60, flush=True)
 
+
 async def main():
     """
     Validate environment and delegate to the investigate worker main entrypoint.
 
-    Required environment variables:
+    Claude Configuration (choose one):
+    Option 1 - API mode (default):
     - ANTHROPIC_API_KEY: Your Anthropic API key for Claude access
+
+    Option 2 - CLI mode (subscription-based, no API key needed):
+    - USE_CLAUDE_CLI=true: Enable CLI mode
+    - Requires: Claude CLI installed (npm install -g @anthropic-ai/claude-code)
+    - Requires: Claude CLI authenticated (claude login)
+    - CLAUDE_CLI_TIMEOUT: Timeout in seconds (default: 300)
+
+    Required environment variables:
     - GITHUB_TOKEN: GitHub personal access token for repository access
     - AWS_ACCESS_KEY_ID: AWS access key for DynamoDB
     - AWS_SECRET_ACCESS_KEY: AWS secret key for DynamoDB
@@ -193,7 +223,7 @@ async def main():
     - TEMPORAL_API_KEY: Temporal Cloud API key (optional, for cloud deployment)
     - PROMPT_CONTEXT_STORAGE: Storage backend (default: auto)
     - DYNAMODB_TABLE_NAME: DynamoDB table name (recommended for production)
-    - CLAUDE_MODEL: Claude model to use (default: claude-sonnet-4-20250514)
+    - CLAUDE_MODEL: Claude model to use (default: claude-opus-4-5-20251101)
     - MAX_TOKENS: Maximum tokens per request (default: 6000)
     """
     # Validate environment before starting
@@ -206,6 +236,7 @@ async def main():
     # Import the investigate worker and run it
     try:
         from investigate_worker import main as investigate_main
+
         await investigate_main()
     except ImportError as e:
         logger.error(f"Failed to import investigate_worker: {e}")
@@ -220,6 +251,7 @@ async def main():
         print("Run 'pip install -r requirements.txt' or use your package manager", flush=True)
         print("=" * 60, flush=True)
         sys.exit(1)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -50,7 +50,7 @@ graph TB
 ### Prerequisites
 
 - Python 3.12+
-- Claude API key
+- Claude API key **OR** Claude CLI with subscription (see [Claude Subscription via CLI](#claude-subscription-via-cli))
 
 ### Installation
 
@@ -407,6 +407,110 @@ mise cleanup-temp
 
 # Reset everything
 mise cleanup-temp && mise dev-dependencies
+```
+
+## Claude Subscription via CLI
+
+RepoSwarm supports using your Claude Max or Pro subscription instead of API keys. This uses the same technique as [subclaude](https://github.com/creativeprofit22/subclaude) - piping prompts through the Claude CLI to leverage your existing subscription.
+
+### Why Use CLI Mode?
+
+| Feature | API Mode | CLI Mode (Subscription) |
+|---------|----------|------------------------|
+| **Authentication** | API key required | Claude CLI login |
+| **Billing** | Pay-per-use API credits | Uses subscription quota |
+| **Setup** | Get API key from console | Install CLI + login |
+| **Best for** | Production/automation | Personal use/development |
+
+### Setup
+
+1. **Install Claude CLI**:
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+2. **Authenticate with your subscription**:
+```bash
+claude login
+```
+
+3. **Enable CLI mode** in your `.env.local`:
+```bash
+# Switch from API to subscription mode
+USE_CLAUDE_CLI=true
+
+# API key not needed in CLI mode
+# ANTHROPIC_API_KEY=  # Can be left empty
+```
+
+4. **Verify setup**:
+```bash
+# Check Claude CLI is working
+claude --version
+
+# Run a test investigation
+mise investigate-one hello-world
+```
+
+### Configuration Options
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `USE_CLAUDE_CLI` | `false` | Enable CLI mode |
+| `CLAUDE_CLI_TIMEOUT` | `300` | Timeout in seconds (5 minutes) |
+
+### Smoke Test
+
+To verify CLI integration is working:
+
+```bash
+# Set environment
+export USE_CLAUDE_CLI=true
+
+# Run a quick test
+python -c "
+from investigator.core.claude_analyzer import ClaudeAnalyzer
+analyzer = ClaudeAnalyzer(logger=None)
+print('✓ CLI mode initialized successfully')
+print(f'  Using CLI: {analyzer.use_cli}')
+"
+```
+
+Expected output:
+```
+✓ CLI mode initialized successfully
+  Using CLI: True
+```
+
+### Troubleshooting CLI Mode
+
+**Claude CLI not found**
+```bash
+# Verify installation
+which claude
+
+# If not found, reinstall
+npm install -g @anthropic-ai/claude-code
+```
+
+**Authentication errors**
+```bash
+# Re-authenticate
+claude logout
+claude login
+```
+
+**Timeout errors**
+```bash
+# Increase timeout for large repositories
+export CLAUDE_CLI_TIMEOUT=600  # 10 minutes
+```
+
+**Switching back to API mode**
+```bash
+# In .env.local
+USE_CLAUDE_CLI=false
+ANTHROPIC_API_KEY=your-api-key-here
 ```
 
 ## Contributing

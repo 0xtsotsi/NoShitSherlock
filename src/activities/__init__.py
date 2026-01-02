@@ -1,1 +1,1 @@
-# Activities package 
+# Activities package

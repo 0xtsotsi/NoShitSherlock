@@ -5,11 +5,10 @@ This module provides a CLI-based alternative to the Anthropic Python SDK,
 allowing the investigator to use the official Claude CLI binary instead of API calls.
 """
 
-import os
 import json
-import subprocess
+import os
 import shutil
-from typing import Optional
+import subprocess
 
 
 class ClaudeCLIAdapter:
@@ -44,7 +43,7 @@ class ClaudeCLIAdapter:
             RuntimeError: If CLI binary is not found
         """
         # Try to find the claude CLI in PATH
-        cli_path = shutil.which('claude')
+        cli_path = shutil.which("claude")
 
         if not cli_path:
             error_msg = (
@@ -77,10 +76,11 @@ class ClaudeCLIAdapter:
         """
         try:
             result = subprocess.run(
-                [self.cli_path, '--version'],
+                [self.cli_path, "--version"],
+                check=False,
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10,
             )
 
             if result.returncode != 0:
@@ -94,14 +94,14 @@ class ClaudeCLIAdapter:
             version_output = result.stdout.strip()
             self.logger.debug(f"Claude CLI version: {version_output}")
 
-        except subprocess.TimeoutExpired:
+        except subprocess.TimeoutExpired as err:
             error_msg = "Claude CLI verification timed out after 10 seconds"
             self.logger.error(error_msg)
-            raise RuntimeError(error_msg)
+            raise RuntimeError(error_msg) from err
         except Exception as e:
-            error_msg = f"Failed to verify Claude CLI: {str(e)}"
+            error_msg = f"Failed to verify Claude CLI: {e!s}"
             self.logger.error(error_msg)
-            raise RuntimeError(error_msg)
+            raise RuntimeError(error_msg) from e
 
     def create_message(self, model: str, max_tokens: int, messages: list) -> dict:
         """
@@ -126,10 +126,10 @@ class ClaudeCLIAdapter:
             raise ValueError("No messages provided")
 
         user_message = messages[0]
-        if user_message.get('role') != 'user':
+        if user_message.get("role") != "user":
             raise ValueError("First message must be from user")
 
-        prompt = user_message.get('content', '')
+        prompt = user_message.get("content", "")
 
         self.logger.info("Sending request to Claude CLI")
         self.logger.debug(f"Model: {model}, max_tokens: {max_tokens}")
@@ -141,10 +141,13 @@ class ClaudeCLIAdapter:
             # We'll use stdin for large prompts
             cmd = [
                 self.cli_path,
-                'prompt',
-                '--model', model,
-                '--max-tokens', str(max_tokens),
-                '--format', 'json'  # Request JSON output for easier parsing
+                "prompt",
+                "--model",
+                model,
+                "--max-tokens",
+                str(max_tokens),
+                "--format",
+                "json",  # Request JSON output for easier parsing
             ]
 
             self.logger.debug(f"Running CLI command: {' '.join(cmd)}")
@@ -152,10 +155,11 @@ class ClaudeCLIAdapter:
             # Execute the CLI with the prompt as stdin
             result = subprocess.run(
                 cmd,
+                check=False,
                 input=prompt,
                 capture_output=True,
                 text=True,
-                timeout=900  # 15 minutes timeout (same as activity timeout)
+                timeout=900,  # 15 minutes timeout (same as activity timeout)
             )
 
             if result.returncode != 0:
@@ -175,8 +179,8 @@ class ClaudeCLIAdapter:
             try:
                 response_data = json.loads(response_text)
                 # If it's a JSON response from the CLI, extract the text
-                if isinstance(response_data, dict) and 'response' in response_data:
-                    response_text = response_data['response']
+                if isinstance(response_data, dict) and "response" in response_data:
+                    response_text = response_data["response"]
             except json.JSONDecodeError:
                 # Not JSON, use the raw text
                 pass
@@ -186,28 +190,23 @@ class ClaudeCLIAdapter:
 
             # Return a response object that mimics the Anthropic SDK structure
             return {
-                'content': [
-                    {
-                        'type': 'text',
-                        'text': response_text
-                    }
-                ],
-                'model': model,
-                'stop_reason': 'end_turn',
-                'usage': {
-                    'input_tokens': 0,  # CLI doesn't provide this
-                    'output_tokens': 0   # CLI doesn't provide this
-                }
+                "content": [{"type": "text", "text": response_text}],
+                "model": model,
+                "stop_reason": "end_turn",
+                "usage": {
+                    "input_tokens": 0,  # CLI doesn't provide this
+                    "output_tokens": 0,  # CLI doesn't provide this
+                },
             }
 
-        except subprocess.TimeoutExpired:
+        except subprocess.TimeoutExpired as err:
             error_msg = "Claude CLI request timed out after 15 minutes"
             self.logger.error(error_msg)
-            raise Exception(error_msg)
+            raise Exception(error_msg) from err
         except Exception as e:
-            error_msg = f"Failed to execute Claude CLI: {str(e)}"
+            error_msg = f"Failed to execute Claude CLI: {e!s}"
             self.logger.error(error_msg)
-            raise Exception(error_msg)
+            raise Exception(error_msg) from e
 
 
 class ClaudeCLIClient:
@@ -228,7 +227,7 @@ class ClaudeCLIClient:
         self.adapter = ClaudeCLIAdapter(logger)
         self.messages = self  # Allow client.messages.create() syntax
 
-    def create(self, model: str, max_tokens: int, messages: list) -> 'ClaudeCLIResponse':
+    def create(self, model: str, max_tokens: int, messages: list) -> "ClaudeCLIResponse":
         """
         Create a message using the Claude CLI.
 
@@ -255,10 +254,10 @@ class ClaudeCLIResponse:
             response_data: Raw response data from the CLI adapter
         """
         self._data = response_data
-        self.content = [ClaudeCLIContent(item) for item in response_data.get('content', [])]
-        self.model = response_data.get('model', '')
-        self.stop_reason = response_data.get('stop_reason', '')
-        self.usage = response_data.get('usage', {})
+        self.content = [ClaudeCLIContent(item) for item in response_data.get("content", [])]
+        self.model = response_data.get("model", "")
+        self.stop_reason = response_data.get("stop_reason", "")
+        self.usage = response_data.get("usage", {})
 
 
 class ClaudeCLIContent:
@@ -271,5 +270,5 @@ class ClaudeCLIContent:
         Args:
             content_data: Content data dict
         """
-        self.type = content_data.get('type', 'text')
-        self.text = content_data.get('text', '')
+        self.type = content_data.get("type", "text")
+        self.text = content_data.get("text", "")
