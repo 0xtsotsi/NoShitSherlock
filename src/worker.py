@@ -1,10 +1,10 @@
+import asyncio
+import logging
 import os
+import shutil
 import sys
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-import asyncio
-import logging
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -29,14 +29,14 @@ def validate_environment():
     try:
         claude_model = os.getenv("CLAUDE_MODEL", Config.CLAUDE_MODEL)
         Config.validate_claude_model(claude_model)
-        logger.info(f"  ✓ Claude model: {claude_model}")
+        logger.info("  ✓ Claude model: %s", claude_model)
     except ValueError as e:
         errors.append(f"Invalid Claude model: {e}")
 
     try:
         max_tokens = int(os.getenv("MAX_TOKENS", Config.MAX_TOKENS))
         Config.validate_max_tokens(max_tokens)
-        logger.info(f"  ✓ Max tokens: {max_tokens}")
+        logger.info("  ✓ Max tokens: %s", max_tokens)
     except ValueError as e:
         errors.append(f"Invalid max tokens: {e}")
 
@@ -45,11 +45,9 @@ def validate_environment():
     if use_claude_cli:
         logger.info("  ✓ Claude CLI mode enabled (subscription-based)")
         # Validate Claude CLI is available
-        import shutil
-
         claude_path = shutil.which("claude")
         if claude_path:
-            logger.info(f"  ✓ Claude CLI found at: {claude_path}")
+            logger.info("  ✓ Claude CLI found at: %s", claude_path)
         else:
             errors.append(
                 "USE_CLAUDE_CLI=true but Claude CLI not found. "
@@ -83,20 +81,20 @@ def validate_environment():
         warnings.append("AWS_DEFAULT_REGION not set, using default 'us-east-1'")
         logger.info("  ⚠ AWS region not set, will use 'us-east-1'")
     else:
-        logger.info(f"  ✓ AWS region: {os.getenv('AWS_DEFAULT_REGION')}")
+        logger.info("  ✓ AWS region: %s", os.getenv("AWS_DEFAULT_REGION"))
 
     # Temporal configuration
     temporal_url = os.getenv("TEMPORAL_SERVER_URL", "localhost:7233")
-    logger.info(f"  ✓ Temporal server URL: {temporal_url}")
+    logger.info("  ✓ Temporal server URL: %s", temporal_url)
 
     temporal_namespace = os.getenv("TEMPORAL_NAMESPACE", "default")
-    logger.info(f"  ✓ Temporal namespace: {temporal_namespace}")
+    logger.info("  ✓ Temporal namespace: %s", temporal_namespace)
 
     temporal_queue = os.getenv("TEMPORAL_TASK_QUEUE", "investigate-task-queue")
-    logger.info(f"  ✓ Temporal task queue: {temporal_queue}")
+    logger.info("  ✓ Temporal task queue: %s", temporal_queue)
 
     temporal_identity = os.getenv("TEMPORAL_IDENTITY", "investigate-worker")
-    logger.info(f"  ✓ Temporal identity: {temporal_identity}")
+    logger.info("  ✓ Temporal identity: %s", temporal_identity)
 
     if os.getenv("TEMPORAL_API_KEY"):
         logger.info("  ✓ Temporal API key present (for Temporal Cloud)")
@@ -105,19 +103,19 @@ def validate_environment():
 
     # Prompt context storage configuration
     prompt_storage = os.getenv("PROMPT_CONTEXT_STORAGE", "auto")
-    logger.info(f"  ✓ Prompt context storage: {prompt_storage}")
+    logger.info("  ✓ Prompt context storage: %s", prompt_storage)
 
     # Architecture hub configuration
     arch_hub_url = Config.get_arch_hub_repo_url()
-    logger.info(f"  ✓ Architecture hub URL: {arch_hub_url}")
+    logger.info("  ✓ Architecture hub URL: %s", arch_hub_url)
 
     arch_hub_web_url = Config.get_arch_hub_web_url()
-    logger.info(f"  ✓ Architecture hub web URL: {arch_hub_web_url}")
+    logger.info("  ✓ Architecture hub web URL: %s", arch_hub_web_url)
 
     # Git configuration
     git_user = os.getenv("GIT_USER_NAME", "Architecture Bot")
     git_email = os.getenv("GIT_USER_EMAIL", "architecture-bot@your-org.com")
-    logger.info(f"  ✓ Git user: {git_user} <{git_email}>")
+    logger.info("  ✓ Git user: %s <%s>", git_user, git_email)
 
     # Check for any missing DynamoDB table name (might be needed)
     dynamodb_table = os.getenv("DYNAMODB_TABLE_NAME")
@@ -129,14 +127,14 @@ def validate_environment():
     try:
         chunk_size = int(os.getenv("WORKFLOW_CHUNK_SIZE", Config.WORKFLOW_CHUNK_SIZE))
         Config.validate_chunk_size(chunk_size)
-        logger.info(f"  ✓ Workflow chunk size: {chunk_size}")
+        logger.info("  ✓ Workflow chunk size: %s", chunk_size)
     except ValueError as e:
         errors.append(f"Invalid workflow chunk size: {e}")
 
     try:
         sleep_hours = float(os.getenv("WORKFLOW_SLEEP_HOURS", Config.WORKFLOW_SLEEP_HOURS))
         Config.validate_sleep_hours(sleep_hours)
-        logger.info(f"  ✓ Workflow sleep hours: {sleep_hours}")
+        logger.info("  ✓ Workflow sleep hours: %s", sleep_hours)
     except ValueError as e:
         errors.append(f"Invalid workflow sleep hours: {e}")
 
@@ -144,24 +142,24 @@ def validate_environment():
     temp_dir = os.path.join(os.getcwd(), Config.TEMP_DIR)
     if not os.path.exists(temp_dir):
         warnings.append(f"Temp directory does not exist: {temp_dir}")
-        logger.info(f"  ⚠ Temp directory does not exist: {temp_dir}")
+        logger.info("  ⚠ Temp directory does not exist: %s", temp_dir)
     else:
-        logger.info(f"  ✓ Temp directory exists: {temp_dir}")
+        logger.info("  ✓ Temp directory exists: %s", temp_dir)
 
     prompts_dir = os.path.join(os.getcwd(), Config.PROMPTS_DIR)
     if not os.path.exists(prompts_dir):
         errors.append(f"Prompts directory does not exist: {prompts_dir}")
     else:
-        logger.info(f"  ✓ Prompts directory exists: {prompts_dir}")
+        logger.info("  ✓ Prompts directory exists: %s", prompts_dir)
 
     # Summary
     logger.info("🔍 Environment validation complete")
-    logger.info(f"  Found {len(errors)} errors and {len(warnings)} warnings")
+    logger.info("  Found %s errors and %s warnings", len(errors), len(warnings))
 
     if warnings:
         logger.info("⚠ Warnings:")
         for warning in warnings:
-            logger.info(f"    - {warning}")
+            logger.info("    - %s", warning)
 
     return errors, warnings
 
@@ -239,7 +237,7 @@ async def main():
 
         await investigate_main()
     except ImportError as e:
-        logger.error(f"Failed to import investigate_worker: {e}")
+        logger.error("Failed to import investigate_worker: %s", e)
         print("=" * 60, flush=True)
         print("❌ CRITICAL ERROR: Cannot import required dependencies", flush=True)
         print("=" * 60, flush=True)

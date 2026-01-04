@@ -38,7 +38,7 @@ try:
 
     logger.info("  ✓ Imported temporalio.client.Client")
 except ImportError as e:
-    logger.error(f"  ✗ Failed to import temporalio.client.Client: {e}")
+    logger.error("  ✗ Failed to import temporalio.client.Client: %s", e)
     raise
 
 try:
@@ -46,7 +46,7 @@ try:
 
     logger.info("  ✓ Imported temporalio.worker.Worker")
 except ImportError as e:
-    logger.error(f"  ✗ Failed to import temporalio.worker.Worker: {e}")
+    logger.error("  ✗ Failed to import temporalio.worker.Worker: %s", e)
     raise
 
 try:
@@ -54,7 +54,7 @@ try:
 
     logger.info("  ✓ Imported temporalio.service.TLSConfig")
 except ImportError as e:
-    logger.error(f"  ✗ Failed to import temporalio.service.TLSConfig: {e}")
+    logger.error("  ✗ Failed to import temporalio.service.TLSConfig: %s", e)
     raise
 
 try:
@@ -62,7 +62,7 @@ try:
 
     logger.info("  ✓ Imported temporalio.contrib.pydantic.pydantic_data_converter")
 except ImportError as e:
-    logger.error(f"  ✗ Failed to import temporalio.contrib.pydantic.pydantic_data_converter: {e}")
+    logger.error("  ✗ Failed to import temporalio.contrib.pydantic.pydantic_data_converter: %s", e)
     raise
 
 try:
@@ -70,7 +70,7 @@ try:
 
     logger.info("  ✓ Imported InvestigateReposWorkflow")
 except ImportError as e:
-    logger.error(f"  ✗ Failed to import InvestigateReposWorkflow: {e}")
+    logger.error("  ✗ Failed to import InvestigateReposWorkflow: %s", e)
     raise
 
 try:
@@ -78,7 +78,7 @@ try:
 
     logger.info("  ✓ Imported InvestigateSingleRepoWorkflow")
 except ImportError as e:
-    logger.error(f"  ✗ Failed to import InvestigateSingleRepoWorkflow: {e}")
+    logger.error("  ✗ Failed to import InvestigateSingleRepoWorkflow: %s", e)
     raise
 
 
@@ -102,7 +102,7 @@ try:
 
     logger.info("  ✓ Imported investigate activities")
 except ImportError as e:
-    logger.error(f"  ✗ Failed to import investigate activities: {e}")
+    logger.error("  ✗ Failed to import investigate activities: %s", e)
     raise
 
 try:
@@ -113,7 +113,7 @@ try:
 
     logger.info("  ✓ Imported investigation cache activities")
 except ImportError as e:
-    logger.error(f"  ✗ Failed to import investigation cache activities: {e}")
+    logger.error("  ✗ Failed to import investigation cache activities: %s", e)
     raise
 
 try:
@@ -124,7 +124,7 @@ try:
 
     logger.info("  ✓ Imported DynamoDB health check activities")
 except ImportError as e:
-    logger.error(f"  ✗ Failed to import DynamoDB health check activities: {e}")
+    logger.error("  ✗ Failed to import DynamoDB health check activities: %s", e)
     raise
 
 logger.info("All imports successful!")
@@ -137,9 +137,9 @@ def update_health_file():
     """Update the health check file to indicate the worker is alive."""
     try:
         HEALTH_FILE.touch()
-        logger.debug(f"Updated health file: {HEALTH_FILE}")
-    except Exception as e:
-        logger.error(f"Failed to update health file: {e}")
+        logger.debug("Updated health file: %s", HEALTH_FILE)
+    except OSError as e:
+        logger.error("Failed to update health file: %s", e)
 
 
 def health_check_thread():
@@ -163,18 +163,15 @@ def get_temporal_config():
     # Log the configuration (masking sensitive data)
     logger.info("=" * 60)
     logger.info("TEMPORAL CONFIGURATION:")
-    logger.info(f"  Server URL: {config['server_url']}")
-    logger.info(f"  Namespace: {config['namespace']}")
-    logger.info(f"  Task Queue: {config['task_queue']}")
-    logger.info(f"  Identity: {config['identity']}")
-    logger.info(f"  API Key Present: {bool(config['api_key'])}")
+    logger.info("  Server URL: %s", config["server_url"])
+    logger.info("  Namespace: %s", config["namespace"])
+    logger.info("  Task Queue: %s", config["task_queue"])
+    logger.info("  Identity: %s", config["identity"])
+    logger.info("  API Key Present: %s", bool(config["api_key"]))
     if config["api_key"]:
-        logger.info(f"  API Key Length: {len(config['api_key'])} chars")
-        logger.info(
-            f"  API Key Preview: {config['api_key'][:10]}..."
-            if len(config["api_key"]) > 10
-            else "Key too short"
-        )
+        logger.info("  API Key Length: %s chars", len(config["api_key"]))
+        preview = config["api_key"][:10] + "..." if len(config["api_key"]) > 10 else "Key too short"
+        logger.info("  API Key Preview: %s", preview)
     logger.info("=" * 60)
 
     return config
@@ -184,9 +181,9 @@ async def main():
     """Main function to run the Temporal worker for investigation workflows."""
     logger.info("=" * 60)
     logger.info("STARTING TEMPORAL WORKER")
-    logger.info(f"Python version: {sys.version}")
-    logger.info(f"Current directory: {os.getcwd()}")
-    logger.info(f"Script location: {os.path.abspath(__file__)}")
+    logger.info("Python version: {sys.version}")
+    logger.info("Current directory: {os.getcwd()}")
+    logger.info("Script location: %s", os.path.abspath(__file__))
     logger.info("=" * 60)
 
     try:
@@ -194,9 +191,9 @@ async def main():
         config = get_temporal_config()
 
         logger.info("Step 2: Preparing connection parameters...")
-        logger.info(f"  Connecting to: {config['server_url']}")
-        logger.info(f"  Namespace: {config['namespace']}")
-        logger.info(f"  Task queue: {config['task_queue']}")
+        logger.info("  Connecting to: %s", config["server_url"])
+        logger.info("  Namespace: %s", config["namespace"])
+        logger.info("  Task queue: %s", config["task_queue"])
 
         # Configure connection based on server URL and whether we have an API key
         connection_kwargs: dict[str, Any] = {}
@@ -221,9 +218,9 @@ async def main():
 
         # Create client connected to server at the given address
         logger.info("Step 4: Attempting to connect to Temporal server...")
-        logger.info(f"  Connection URL: {config['server_url']}")
-        logger.info(f"  Namespace: {config['namespace']}")
-        logger.info(f"  Identity: {config['identity']}")
+        logger.info("  Connection URL: %s", config["server_url"])
+        logger.info("  Namespace: %s", config["namespace"])
+        logger.info("  Identity: %s", config["identity"])
 
         client = await Client.connect(
             config["server_url"],
@@ -243,10 +240,11 @@ async def main():
 
         # Run the worker for investigation workflows
         logger.info("Step 5: Creating worker instance...")
-        logger.info(f"  Task queue: {config['task_queue']}")
-        logger.info(
-            f"  Workflows: {[w.__name__ for w in [InvestigateReposWorkflow, InvestigateSingleRepoWorkflow]]}"
-        )
+        logger.info("  Task queue: %s", config["task_queue"])
+        workflow_names = [
+            w.__name__ for w in [InvestigateReposWorkflow, InvestigateSingleRepoWorkflow]
+        ]
+        logger.info("  Workflows: %s", workflow_names)
         all_activities = [
             save_to_arch_hub,
             read_repos_config,
@@ -267,7 +265,8 @@ async def main():
             read_dependencies_activity,
             cache_dependencies_activity,
         ]
-        logger.info(f"  Activities: {[a.__name__ for a in all_activities]}")
+        activity_names = [a.__name__ for a in all_activities]
+        logger.info("  Activities: %s", activity_names)
 
         worker = Worker(
             client,
@@ -280,23 +279,23 @@ async def main():
         logger.info("Step 6: Starting worker run loop...")
         logger.info("=" * 60)
         logger.info("TEMPORAL WORKER IS RUNNING")
-        logger.info(f"Listening on task queue: {config['task_queue']}")
+        logger.info("Listening on task queue: %s", config["task_queue"])
         logger.info("Waiting for workflows...")
         logger.info("=" * 60)
 
         await worker.run()
 
     except ImportError as e:
-        logger.error(f"Import error - missing dependency: {e!s}", exc_info=True)
+        logger.error("Import error - missing dependency: %s", e, exc_info=True)
         logger.error("Make sure all required packages are installed")
         raise
     except ConnectionError as e:
-        logger.error(f"Connection error - could not connect to Temporal: {e!s}", exc_info=True)
+        logger.error("Connection error - could not connect to Temporal: %s", e, exc_info=True)
         logger.error("Check your Temporal server URL and network connectivity")
         raise
     except Exception as e:
-        logger.error(f"Unexpected error during startup: {e!s}", exc_info=True)
-        logger.error(f"Error type: {type(e).__name__}")
+        logger.error("Unexpected error during startup: %s", e, exc_info=True)
+        logger.error("Error type: %s", type(e).__name__)
         raise
 
 
@@ -307,7 +306,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("Worker stopped by user", flush=True)
         sys.exit(0)
-    except Exception as e:
+    except (ConnectionError, RuntimeError, OSError) as e:
         print(f"FATAL ERROR: {e}", flush=True)
         print(f"Error type: {type(e).__name__}", flush=True)
         import traceback

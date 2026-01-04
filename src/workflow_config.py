@@ -88,7 +88,8 @@ class WorkflowConfig:
         """
         if not isinstance(hours, (int, float)) or hours < 0.01 or hours > 168:
             raise ValueError(
-                f"Invalid sleep_hours '{hours}'. Must be number between 0.01 and 168 (36 seconds to 1 week)"
+                f"Invalid sleep_hours '{hours}'. Must be number between 0.01 and 168 "
+                f"(36 seconds to 1 week)"
             )
         return float(hours)
 

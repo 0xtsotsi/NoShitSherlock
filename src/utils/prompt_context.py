@@ -54,7 +54,7 @@ def get_storage_backend() -> str:
         logger.info("No production environment detected, using file-based storage")
         return "file"
     else:
-        logger.warning(f"Unknown storage backend: {storage_backend}, defaulting to file")
+        logger.warning("Unknown storage backend: %s, defaulting to file", storage_backend)
         return "file"
 
 
@@ -76,12 +76,12 @@ def create_prompt_context(
 
     if backend == "dynamodb":
         logger.debug(
-            f"Creating DynamoDBPromptContext for {repo_name}/{step_name} v{prompt_version}"
+            "Creating DynamoDBPromptContext for %s/%s v%s", repo_name, step_name, prompt_version
         )
         return DynamoDBPromptContext.create_for_step(repo_name, step_name, prompt_version)
     else:
         logger.debug(
-            f"Creating FileBasedPromptContext for {repo_name}/{step_name} v{prompt_version}"
+            "Creating FileBasedPromptContext for %s/%s v%s", repo_name, step_name, prompt_version
         )
         return FileBasedPromptContext.create_for_step(repo_name, step_name, prompt_version)
 
@@ -119,10 +119,10 @@ def create_prompt_context_manager(repo_name: str) -> PromptContextManagerBase:
     backend = get_storage_backend()
 
     if backend == "dynamodb":
-        logger.debug(f"Creating DynamoDBPromptContextManager for {repo_name}")
+        logger.debug("Creating DynamoDBPromptContextManager for %s", repo_name)
         return DynamoDBPromptContextManager(repo_name)
     else:
-        logger.debug(f"Creating FileBasedPromptContextManager for {repo_name}")
+        logger.debug("Creating FileBasedPromptContextManager for %s", repo_name)
         return FileBasedPromptContextManager(repo_name)
 
 

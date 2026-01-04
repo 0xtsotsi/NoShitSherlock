@@ -53,7 +53,7 @@ class ClaudeAnalyzer:
                 logger.info("Using Anthropic API for Claude requests")
 
         if logger:
-            logger.info(f"Claude Analyzer initialized in {self.mode} mode")
+            logger.info("Claude Analyzer initialized in {self.mode} mode")
 
     def clean_prompt(self, prompt_template: str) -> str:
         """
@@ -82,7 +82,7 @@ class ClaudeAnalyzer:
 
             cleaned_prompt = "\n".join(lines)
             if self.logger:
-                self.logger.debug(f"Cleaned prompt ({len(cleaned_prompt)} characters)")
+                self.logger.debug("Cleaned prompt (%s characters)", len(cleaned_prompt))
 
             return cleaned_prompt
         else:
@@ -126,8 +126,8 @@ class ClaudeAnalyzer:
             prompt = prompt.replace("{previous_context}", "")
 
         if self.logger:
-            self.logger.debug(f"Prompt created ({len(prompt)} characters)")
-            self.logger.debug(f"Prompt preview (first 1000 chars): {prompt[:1000]}...")
+            self.logger.debug("Prompt created ({len(prompt)} characters)")
+            self.logger.debug("Prompt preview (first 1000 chars): {prompt[:1000]}...")
 
         try:
             # Use config overrides or defaults
@@ -139,7 +139,7 @@ class ClaudeAnalyzer:
                 self.logger.info(
                     f"[{self.mode} MODE] Sending analysis request via Claude {'CLI' if self.use_cli else 'API'}"
                 )
-                self.logger.debug(f"Using model: {claude_model}, max_tokens: {max_tokens}")
+                self.logger.debug("Using model: %s, max_tokens: %s", claude_model, max_tokens)
 
             response = self.client.messages.create(
                 model=claude_model,
@@ -156,14 +156,16 @@ class ClaudeAnalyzer:
                     f"[{self.mode} MODE] Received analysis from Claude {'CLI' if self.use_cli else 'API'} "
                     f"({len(analysis_text)} characters)"
                 )
-                self.logger.debug(f"Analysis preview (first 1000 chars): {analysis_text[:1000]}...")
+                self.logger.debug(
+                    "Analysis preview (first 1000 chars): %s...", analysis_text[:1000]
+                )
 
             return analysis_text
 
-        except Exception as e:
+        except (ConnectionError, RuntimeError, OSError) as e:
             error_prefix = f"[{self.mode} MODE] "
             if self.logger:
-                self.logger.error(f"{error_prefix}Claude request failed: {e!s}")
+                self.logger.error("%sClaude request failed: {str(e)}", error_prefix)
             raise Exception(f"{error_prefix}Failed to get analysis from Claude: {e!s}") from e
 
     def analyze_structure(self, repo_structure: str, prompt_template: str) -> str:

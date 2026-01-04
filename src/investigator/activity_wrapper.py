@@ -63,13 +63,12 @@ class ActivityWrapper:
                 retry_policy=retry_policy,
                 **kwargs,
             )
-        else:
-            # Running outside Temporal context (testing or direct execution)
-            # Execute the activity function directly
-            if asyncio.iscoroutinefunction(activity_func):
-                return await activity_func(*args, **kwargs)
-            else:
-                return activity_func(*args, **kwargs)
+
+        # Running outside Temporal context (testing or direct execution)
+        # Execute the activity function directly
+        if asyncio.iscoroutinefunction(activity_func):
+            return await activity_func(*args, **kwargs)
+        return activity_func(*args, **kwargs)
 
     def is_temporal_context(self) -> bool:
         """

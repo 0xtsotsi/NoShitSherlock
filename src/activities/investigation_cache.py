@@ -109,19 +109,21 @@ class InvestigationCache:
         current_prompt_versions: dict[str, str] | None,
     ) -> None:
         """Log the initial state and prompt versions for the investigation check."""
-        self.logger.info(f"🔍 CACHE CHECK: Starting investigation check for {repo_name}")
+        self.logger.info("🔍 CACHE CHECK: Starting investigation check for %s", repo_name)
         self.logger.info(
-            f"📊 CURRENT STATE: Branch: {current_state.branch_name}, "
-            f"Commit: {current_state.commit_sha[:8]}, "
+            "📊 CURRENT STATE: Branch: %s, Commit: %s",
+            current_state.branch_name,
+            current_state.commit_sha[:8],
         )
 
         if current_prompt_versions:
             self.logger.info(
-                f"📝 CURRENT PROMPTS: {len(current_prompt_versions)} prompts - "
-                f"{list(current_prompt_versions.keys())}"
+                "📝 CURRENT PROMPTS: %s prompts - %s",
+                len(current_prompt_versions),
+                list(current_prompt_versions.keys()),
             )
             for name, version in current_prompt_versions.items():
-                self.logger.debug(f"   - {name}: v{version}")
+                self.logger.debug("   - %s: v%s", version, name)
         else:
             self.logger.warning("⚠️  NO PROMPT VERSIONS provided - version checking disabled")
 
@@ -133,7 +135,7 @@ class InvestigationCache:
             Either the InvestigationMetadata, or an InvestigationDecision if
             there's an error or no previous investigation found.
         """
-        self.logger.info(f"🗃️  STORAGE: Looking up previous investigation for {repo_name}")
+        self.logger.info("🗃️  STORAGE: Looking up previous investigation for %s", repo_name)
         try:
             raw_data = self.storage_client.get_latest_investigation(repo_name)
             if raw_data:
@@ -150,14 +152,17 @@ class InvestigationCache:
                     last_investigation._raw_data = raw_data
                     return last_investigation
                 except Exception as parse_error:
-                    self.logger.warning(f"⚠️  Failed to parse investigation metadata: {parse_error}")
-                    self.logger.warning(f"   Raw data: {raw_data}")
+                    self.logger.warning(
+                        "⚠️  Failed to parse investigation metadata: %s", parse_error
+                    )
+                    self.logger.warning("   Raw data: %s", raw_data)
                     # Continue with raw data for backward compatibility
                     return raw_data
             else:
                 self.logger.info("❌ STORAGE: No previous investigation found")
                 self.logger.info(
-                    f"🆕 DECISION: No previous investigation found for {repo_name} - NEEDS INVESTIGATION"
+                    "🆕 DECISION: No previous investigation found for %s - NEEDS INVESTIGATION",
+                    repo_name,
                 )
                 return InvestigationDecision(
                     needs_investigation=True,
@@ -168,7 +173,7 @@ class InvestigationCache:
                 )
         except Exception as e:
             self.logger.error(
-                f"💥 STORAGE ERROR: Failed to check storage for previous investigation: {e}"
+                "💥 STORAGE ERROR: Failed to check storage for previous investigation: %s", e
             )
             return InvestigationDecision(
                 needs_investigation=True,
@@ -197,9 +202,9 @@ class InvestigationCache:
         last_investigation_date = datetime.fromtimestamp(last_timestamp, tz=UTC)
 
         self.logger.info("📜 LAST INVESTIGATION DETAILS:")
-        self.logger.info(f"   Date: {last_investigation_date.isoformat()}")
-        self.logger.info(f"   Branch: {last_branch}")
-        self.logger.info(f"   Commit: {last_commit[:8] if last_commit else 'unknown'}")
+        self.logger.info("   Date: %s", last_investigation_date.isoformat())
+        self.logger.info("   Branch: %s", last_branch)
+        self.logger.info("   Commit: %s", last_commit[:8] if last_commit else "unknown")
 
         # Log prompt metadata from last investigation
         if last_prompt_metadata:
@@ -211,9 +216,9 @@ class InvestigationCache:
                 last_prompt_versions = last_prompt_metadata.get("versions", {})
                 last_prompt_count = last_prompt_metadata.get("count", 0)
 
-            self.logger.info(f"   Prompts: {last_prompt_count} prompts in last investigation")
+            self.logger.info("   Prompts: %s prompts in last investigation", last_prompt_count)
             for name, version in last_prompt_versions.items():
-                self.logger.debug(f"      - {name}: v{version}")
+                self.logger.debug("      - %s: v%s", version, name)
         else:
             self.logger.warning("   No prompt metadata found in last investigation")
 
@@ -235,9 +240,10 @@ class InvestigationCache:
         last_investigated_commit = last_investigation_data["commit"]
 
         self.logger.info("🔄 CHECKING: Commit changes...")
-        self.logger.info(f"   Current: {current_state.commit_sha[:8]}")
+        self.logger.info("   Current: %s", current_state.commit_sha[:8])
         self.logger.info(
-            f"   Last:    {last_investigated_commit[:8] if last_investigated_commit else 'unknown'}"
+            "   Last:    %s",
+            last_investigated_commit[:8] if last_investigated_commit else "unknown",
         )
 
         if current_state.commit_sha != last_investigated_commit:
@@ -266,8 +272,8 @@ class InvestigationCache:
         last_branch = last_investigation_data["branch"]
 
         self.logger.info("🔄 CHECKING: Branch changes...")
-        self.logger.info(f"   Current: {current_state.branch_name}")
-        self.logger.info(f"   Last:    {last_branch}")
+        self.logger.info("   Current: %s", current_state.branch_name)
+        self.logger.info("   Last:    %s", last_branch)
 
         if current_state.branch_name != last_branch:
             self.logger.info(
@@ -374,7 +380,9 @@ class InvestigationCache:
             for prompt_name, current_version in current_prompt_versions.items():
                 if current_version != "1":
                     self.logger.info(
-                        f"✅ DECISION: Prompt '{prompt_name}' has version {current_version} but no previous version tracking - NEEDS INVESTIGATION"
+                        "✅ DECISION: Prompt '%s' has version %s but no previous version tracking - NEEDS INVESTIGATION",
+                        prompt_name,
+                        current_version,
                     )
                     return InvestigationDecision(
                         needs_investigation=True,
@@ -398,12 +406,14 @@ class InvestigationCache:
         """Check if the number of prompts has changed."""
         current_prompt_count = len(current_prompt_versions)
         self.logger.info(
-            f"   Prompt count - Current: {current_prompt_count}, Last: {last_prompt_count}"
+            "   Prompt count - Current: %s, Last: %s", current_prompt_count, last_prompt_count
         )
 
         if current_prompt_count != last_prompt_count:
             self.logger.info(
-                f"✅ DECISION: Prompt count changed from {last_prompt_count} to {current_prompt_count} - NEEDS INVESTIGATION"
+                "✅ DECISION: Prompt count changed from %s to %s - NEEDS INVESTIGATION",
+                last_prompt_count,
+                current_prompt_count,
             )
             return InvestigationDecision(
                 needs_investigation=True,
@@ -432,14 +442,19 @@ class InvestigationCache:
             if last_version is None:
                 last_version = "1"
                 self.logger.debug(
-                    f"      {prompt_name}: v{current_version} (no previous version, assuming v1)"
+                    "      %s: v%s (no previous version, assuming v1)", prompt_name, current_version
                 )
             else:
-                self.logger.debug(f"      {prompt_name}: v{current_version} (was v{last_version})")
+                self.logger.debug(
+                    "      %s: v%s (was v%s)", last_version, current_version, prompt_name
+                )
 
             if last_version != current_version:
                 self.logger.info(
-                    f"✅ DECISION: Prompt '{prompt_name}' version changed from {last_version} to {current_version} - NEEDS INVESTIGATION"
+                    "✅ DECISION: Prompt '%s' version changed from %s to %s - NEEDS INVESTIGATION",
+                    prompt_name,
+                    last_version,
+                    current_version,
                 )
                 return InvestigationDecision(
                     needs_investigation=True,
@@ -465,7 +480,7 @@ class InvestigationCache:
         for prompt_name in last_prompt_versions:
             if prompt_name not in current_prompt_versions:
                 self.logger.info(
-                    f"✅ DECISION: Prompt '{prompt_name}' was removed - NEEDS INVESTIGATION"
+                    "✅ DECISION: Prompt '%s' was removed - NEEDS INVESTIGATION", prompt_name
                 )
                 return InvestigationDecision(
                     needs_investigation=True,
@@ -489,9 +504,10 @@ class InvestigationCache:
         last_investigation_date = last_investigation_data["date"]
 
         self.logger.info(
-            f"🎯 FINAL DECISION: Repository {repo_name} hasn't changed since last investigation - SKIPPING INVESTIGATION"
+            "🎯 FINAL DECISION: Repository %s hasn't changed since last investigation - SKIPPING INVESTIGATION",
+            repo_name,
         )
-        self.logger.info(f"📅 Last investigation date: {last_investigation_date.isoformat()}")
+        self.logger.info("📅 Last investigation date: %s", last_investigation_date.isoformat())
 
         return InvestigationDecision(
             needs_investigation=False,
@@ -527,14 +543,16 @@ class InvestigationCache:
             Dictionary with save status and details
         """
         self.logger.info(
-            f"💾 METADATA: Saving investigation metadata for {repo_name} "
-            f"(commit: {commit_sha[:8]}, branch: {branch_name})"
+            "💾 METADATA: Saving investigation metadata for %s (commit: %s, branch: %s)",
+            repo_name,
+            commit_sha[:8],
+            branch_name,
         )
 
         if prompt_versions:
-            self.logger.info(f"   Including prompt metadata: {len(prompt_versions)} prompts")
+            self.logger.info("   Including prompt metadata: %s prompts", len(prompt_versions))
             for name, version in prompt_versions.items():
-                self.logger.debug(f"      - {name}: v{version}")
+                self.logger.debug("      - %s: v%s", version, name)
         else:
             self.logger.warning("   No prompt versions provided for metadata")
 
@@ -560,8 +578,10 @@ class InvestigationCache:
             )
 
             self.logger.info(
-                f"✅ METADATA SAVED: Successfully saved investigation metadata for {repo_name} "
-                f"(commit: {commit_sha[:8]}, branch: {branch_name})"
+                "✅ METADATA SAVED: Successfully saved investigation metadata for %s (commit: %s, branch: %s)",
+                repo_name,
+                commit_sha[:8],
+                branch_name,
             )
 
             return {
@@ -571,7 +591,7 @@ class InvestigationCache:
             }
 
         except Exception as e:
-            self.logger.error(f"💥 METADATA ERROR: Failed to save investigation metadata: {e}")
+            self.logger.error("💥 METADATA ERROR: Failed to save investigation metadata: %s", e)
             return {
                 "status": "error",
                 "message": f"Failed to save investigation metadata: {e!s}",
@@ -608,9 +628,13 @@ class InvestigationCache:
         prompt_cache_key = cache_key_obj.to_storage_key()
 
         self.logger.info(
-            f"🔍 PROMPT CACHE: Checking cache for {repo_name}/{step_name} at commit {commit_sha[:8]} v{prompt_version}"
+            "🔍 PROMPT CACHE: Checking cache for %s/%s at commit %s v%s",
+            repo_name,
+            step_name,
+            commit_sha[:8],
+            prompt_version,
         )
-        self.logger.debug(f"   Cache key: {prompt_cache_key}")
+        self.logger.debug("   Cache key: %s", prompt_cache_key)
 
         try:
             # Try to get cached result for this exact prompt+commit+version combination
@@ -618,10 +642,15 @@ class InvestigationCache:
 
             if cached_result:
                 self.logger.info(
-                    f"✅ PROMPT CACHE HIT: Found cached result for {repo_name}/{step_name} at commit {commit_sha[:8]} v{prompt_version}"
+                    "✅ PROMPT CACHE HIT: Found cached result for %s/%s at commit %s v%s",
+                    repo_name,
+                    step_name,
+                    commit_sha[:8],
+                    prompt_version,
                 )
                 self.logger.debug(
-                    f"   Cached content length: {len(cached_result) if cached_result else 0} characters"
+                    "   Cached content length: %s characters",
+                    len(cached_result) if cached_result else 0,
                 )
                 return {
                     "needs_analysis": False,
@@ -632,7 +661,11 @@ class InvestigationCache:
                 }
             else:
                 self.logger.info(
-                    f"❌ PROMPT CACHE MISS: No cached result found for {repo_name}/{step_name} at commit {commit_sha[:8]} v{prompt_version}"
+                    "❌ PROMPT CACHE MISS: No cached result found for %s/%s at commit %s v%s",
+                    repo_name,
+                    step_name,
+                    commit_sha[:8],
+                    prompt_version,
                 )
                 return {
                     "needs_analysis": True,
@@ -644,7 +677,10 @@ class InvestigationCache:
 
         except Exception as e:
             self.logger.error(
-                f"💥 PROMPT CACHE ERROR: Error checking prompt cache for {repo_name}/{step_name}: {e}"
+                "💥 PROMPT CACHE ERROR: Error checking prompt cache for %s/%s: %s",
+                repo_name,
+                step_name,
+                e,
             )
             # On error, safer to re-run the analysis
             return {
@@ -687,10 +723,14 @@ class InvestigationCache:
         prompt_cache_key = cache_key_obj.to_storage_key()
 
         self.logger.info(
-            f"💾 PROMPT CACHE: Saving result for {repo_name}/{step_name} at commit {commit_sha[:8]} v{prompt_version}"
+            "💾 PROMPT CACHE: Saving result for %s/%s at commit %s v%s",
+            repo_name,
+            step_name,
+            commit_sha[:8],
+            prompt_version,
         )
-        self.logger.debug(f"   Cache key: {prompt_cache_key}")
-        self.logger.debug(f"   Content length: {len(result_content)} characters")
+        self.logger.debug("   Cache key: %s", prompt_cache_key)
+        self.logger.debug("   Content length: %s characters", len(result_content))
 
         try:
             # Convert TTL from days to minutes for the storage layer
@@ -705,8 +745,11 @@ class InvestigationCache:
             )
 
             self.logger.info(
-                f"✅ PROMPT CACHE SAVED: Successfully cached prompt result for {repo_name}/{step_name} "
-                f"at commit {commit_sha[:8]} v{prompt_version}"
+                "✅ PROMPT CACHE SAVED: Successfully cached prompt result for %s/%s at commit %s v%s",
+                repo_name,
+                step_name,
+                commit_sha[:8],
+                prompt_version,
             )
 
             return {
@@ -718,7 +761,10 @@ class InvestigationCache:
 
         except Exception as e:
             self.logger.error(
-                f"💥 PROMPT CACHE ERROR: Failed to cache prompt result for {repo_name}/{step_name}: {e}"
+                "💥 PROMPT CACHE ERROR: Failed to cache prompt result for %s/%s: %s",
+                repo_name,
+                step_name,
+                e,
             )
             # Don't fail the workflow for cache save failures
             return {
@@ -747,9 +793,9 @@ class InvestigationCache:
             # Convert TTL to minutes
             ttl_minutes = ttl_days * 24 * 60
 
-            self.logger.info(f"💾 DEPENDENCIES: Caching dependencies for {repo_name}")
-            self.logger.debug(f"   Reference key: {reference_key}")
-            self.logger.debug(f"   TTL: {ttl_days} days ({ttl_minutes} minutes)")
+            self.logger.info("💾 DEPENDENCIES: Caching dependencies for %s", repo_name)
+            self.logger.debug("   Reference key: %s", reference_key)
+            self.logger.debug("   TTL: %s days (%s minutes)", ttl_minutes, ttl_days)
 
             # Save using the storage client's abstracted method
             saved_item = self.storage_client.save_temporary_analysis_data(
@@ -757,7 +803,7 @@ class InvestigationCache:
             )
 
             self.logger.info(
-                f"✅ DEPENDENCIES CACHED: Successfully cached dependencies for {repo_name}"
+                "✅ DEPENDENCIES CACHED: Successfully cached dependencies for %s", repo_name
             )
 
             return {
@@ -767,7 +813,7 @@ class InvestigationCache:
             }
         except Exception as e:
             self.logger.error(
-                f"💥 DEPENDENCIES ERROR: Failed to cache dependencies for {repo_name}: {e}"
+                "💥 DEPENDENCIES ERROR: Failed to cache dependencies for %s: %s", repo_name, e
             )
             return {"status": "error", "reference_key": None, "error": str(e)}
 
@@ -782,7 +828,7 @@ class InvestigationCache:
             Dependencies data or None if not found
         """
         try:
-            self.logger.info(f"🔍 DEPENDENCIES: Retrieving dependencies with key: {reference_key}")
+            self.logger.info("🔍 DEPENDENCIES: Retrieving dependencies with key: %s", reference_key)
             data = self.storage_client.get_temporary_analysis_data(reference_key)
 
             if data:
@@ -791,10 +837,10 @@ class InvestigationCache:
                 return data if isinstance(data, dict) else None
             else:
                 self.logger.warning(
-                    f"❌ DEPENDENCIES NOT FOUND: No dependencies found for key: {reference_key}"
+                    "❌ DEPENDENCIES NOT FOUND: No dependencies found for key: %s", reference_key
                 )
                 return None
 
         except Exception as e:
-            self.logger.error(f"💥 DEPENDENCIES ERROR: Failed to retrieve dependencies: {e}")
+            self.logger.error("💥 DEPENDENCIES ERROR: Failed to retrieve dependencies: %s", e)
             return None

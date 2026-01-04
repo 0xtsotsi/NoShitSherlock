@@ -40,7 +40,7 @@ class DynamoDBClient:
             else:
                 # Fallback to hardcoded default
                 self.table_name = "staging-repo-swarm-results"
-                logger.info(f"Using hardcoded default table name: {self.table_name}")
+                logger.info("Using hardcoded default table name: %s", self.table_name)
 
         # Initialize boto3 DynamoDB resource
         # The IAM role attached to the ECS task will provide credentials automatically
@@ -49,7 +49,7 @@ class DynamoDBClient:
         )
         self.table = self.dynamodb.Table(self.table_name)
 
-        logger.info(f"Initialized DynamoDB client for table: {self.table_name}")
+        logger.info("Initialized DynamoDB client for table: %s", self.table_name)
 
     def _get_table_name_from_ssm(self) -> str | None:
         """
@@ -79,21 +79,21 @@ class DynamoDBClient:
                     response = ssm_client.get_parameter(Name=path, WithDecryption=True)
                     table_name = response["Parameter"]["Value"]
                     if table_name:
-                        logger.info(f"Found DynamoDB table name in SSM parameter: {path}")
+                        logger.info("Found DynamoDB table name in SSM parameter: %s", path)
                         return table_name if isinstance(table_name, str) else None
                 except ClientError as e:
                     if e.response["Error"]["Code"] == "ParameterNotFound":
-                        logger.debug(f"SSM parameter not found: {path}")
+                        logger.debug("SSM parameter not found: %s", path)
                         continue
                     else:
-                        logger.warning(f"Error accessing SSM parameter {path}: {e}")
+                        logger.warning("Error accessing SSM parameter %s: %s", e, path)
                         continue
 
             logger.info("No DynamoDB table name found in SSM parameters")
             return None
 
         except Exception as e:
-            logger.warning(f"Failed to read from SSM parameter store: {e}")
+            logger.warning("Failed to read from SSM parameter store: %s", e)
             return None
 
     def save_investigation_metadata(
@@ -153,12 +153,15 @@ class DynamoDBClient:
             self.table.put_item(Item=item)
 
             logger.info(
-                f"Saved investigation metadata for {repository_name} (commit: {latest_commit[:8]}) at timestamp {current_timestamp}"
+                "Saved investigation metadata for %s (commit: %s) at timestamp %s",
+                repository_name,
+                latest_commit[:8],
+                current_timestamp,
             )
             return item if isinstance(item, dict) else {}
 
         except ClientError as e:
-            logger.error(f"Error saving to DynamoDB: {e}")
+            logger.error("Error saving to DynamoDB: %s", e)
             raise
 
     def get_latest_investigation(self, repository_name: str) -> dict[str, Any] | None:
@@ -192,7 +195,7 @@ class DynamoDBClient:
             return None
 
         except ClientError as e:
-            logger.error(f"Error reading from DynamoDB: {e}")
+            logger.error("Error reading from DynamoDB: %s", e)
             raise
 
     def get_latest_analysis(
@@ -233,7 +236,7 @@ class DynamoDBClient:
             return None
 
         except ClientError as e:
-            logger.error(f"Error reading from DynamoDB: {e}")
+            logger.error("Error reading from DynamoDB: %s", e)
             raise
 
     def get_all_analyses(self, repository_name: str, limit: int = 10) -> list[dict[str, Any]]:
@@ -264,7 +267,7 @@ class DynamoDBClient:
             return [self._convert_decimal_to_float(item) for item in items]
 
         except ClientError as e:
-            logger.error(f"Error reading from DynamoDB: {e}")
+            logger.error("Error reading from DynamoDB: %s", e)
             raise
 
     def query_by_analysis_type(self, analysis_type: str, limit: int = 10) -> list[dict[str, Any]]:
@@ -296,7 +299,7 @@ class DynamoDBClient:
             return [self._convert_decimal_to_float(item) for item in items]
 
         except ClientError as e:
-            logger.error(f"Error querying DynamoDB GSI: {e}")
+            logger.error("Error querying DynamoDB GSI: %s", e)
             raise
 
     def delete_analysis(self, repository_name: str, analysis_timestamp: int) -> bool:
@@ -314,11 +317,13 @@ class DynamoDBClient:
             self.table.delete_item(
                 Key={"repository_name": repository_name, "analysis_timestamp": analysis_timestamp}
             )
-            logger.info(f"Deleted analysis for {repository_name} at timestamp {analysis_timestamp}")
+            logger.info(
+                "Deleted analysis for %s at timestamp %s", analysis_timestamp, repository_name
+            )
             return True
 
         except ClientError as e:
-            logger.error(f"Error deleting from DynamoDB: {e}")
+            logger.error("Error deleting from DynamoDB: %s", e)
             raise
 
     def save_temporary_analysis_data(
@@ -365,7 +370,7 @@ class DynamoDBClient:
             # If data is large (> 300KB to leave room for metadata), compress it
             if data_size > 300 * 1024:  # 300KB threshold
                 logger.info(
-                    f"Large data detected ({data_size} bytes), compressing before saving..."
+                    "Large data detected (%s bytes), compressing before saving...", data_size
                 )
 
                 # Compress the data
@@ -373,8 +378,12 @@ class DynamoDBClient:
                 compressed_b64 = base64.b64encode(compressed_data).decode("utf-8")
                 compressed_size = len(compressed_b64)
 
+                ratio = compressed_size / data_size
                 logger.info(
-                    f"Compressed from {data_size} to {compressed_size} bytes (ratio: {compressed_size/data_size:.2%})"
+                    "Compressed from %s to %s bytes (ratio: %.2f%%)",
+                    data_size,
+                    compressed_size,
+                    ratio * 100,
                 )
 
                 # Check if even compressed data is too large (> 380KB to leave room for metadata)
@@ -426,7 +435,7 @@ class DynamoDBClient:
             # Save to DynamoDB
             self.table.put_item(Item=item)
 
-            logger.info(f"Saved temporary analysis data with reference key: {reference_key}")
+            logger.info("Saved temporary analysis data with reference key: %s", reference_key)
             return {
                 "status": "success",
                 "reference_key": reference_key,
@@ -435,7 +444,7 @@ class DynamoDBClient:
             }
 
         except ClientError as e:
-            logger.error(f"Error saving temporary analysis data to DynamoDB: {e}")
+            logger.error("Error saving temporary analysis data to DynamoDB: %s", e)
             raise
 
     def _save_chunked_analysis_data(
@@ -468,7 +477,7 @@ class DynamoDBClient:
         import json
 
         logger.info(
-            f"Data too large even after compression, using chunking strategy for: {reference_key}"
+            "Data too large even after compression, using chunking strategy for: %s", reference_key
         )
 
         # Prepare data
@@ -486,7 +495,7 @@ class DynamoDBClient:
         total_size = len(compressed_b64)
         total_chunks = (total_size + chunk_size - 1) // chunk_size  # Ceiling division
 
-        logger.info(f"Splitting {total_size} bytes into {total_chunks} chunks")
+        logger.info("Splitting %s bytes into %s chunks", total_chunks, total_size)
 
         try:
             # Save metadata item
@@ -523,10 +532,10 @@ class DynamoDBClient:
                 chunk_item = self._convert_floats_to_decimal(chunk_item)
                 self.table.put_item(Item=chunk_item)
 
-                logger.debug(f"Saved chunk {i+1}/{total_chunks} for {reference_key}")
+                logger.debug("Saved chunk {i+1}/%s for %s", reference_key, total_chunks)
 
             logger.info(
-                f"Successfully saved {total_chunks} chunks for reference key: {reference_key}"
+                "Successfully saved %s chunks for reference key: %s", total_chunks, reference_key
             )
             return {
                 "status": "success",
@@ -537,7 +546,7 @@ class DynamoDBClient:
             }
 
         except ClientError as e:
-            logger.error(f"Error saving chunked data to DynamoDB: {e}")
+            logger.error("Error saving chunked data to DynamoDB: %s", e)
             raise
 
     def _get_chunked_analysis_data(
@@ -557,7 +566,7 @@ class DynamoDBClient:
         import gzip
         import json
 
-        logger.info(f"Retrieving {total_chunks} chunks for reference key: {reference_key}")
+        logger.info("Retrieving %s chunks for reference key: %s", reference_key, total_chunks)
 
         try:
             # Retrieve all chunks
@@ -576,7 +585,7 @@ class DynamoDBClient:
                     chunk_data = items[0].get("chunk_data", "")
                     chunks.append(chunk_data)
                 else:
-                    logger.error(f"Missing chunk {i} for reference key: {reference_key}")
+                    logger.error("Missing chunk %s for reference key: %s", reference_key, i)
                     return None
 
             # Reassemble compressed data
@@ -588,14 +597,16 @@ class DynamoDBClient:
             data = json.loads(decompressed_json)
 
             logger.info(
-                f"Successfully retrieved and reassembled {total_chunks} chunks for {reference_key}"
+                "Successfully retrieved and reassembled %s chunks for %s",
+                total_chunks,
+                reference_key,
             )
             if isinstance(data, dict):
                 data["reference_key"] = reference_key
             return data if isinstance(data, dict) else None
 
         except Exception as e:
-            logger.error(f"Error retrieving chunked data from DynamoDB: {e}")
+            logger.error("Error retrieving chunked data from DynamoDB: %s", e)
             return None
 
     def get_temporary_analysis_data(self, reference_key: str) -> dict[str, Any] | None:
@@ -626,7 +637,7 @@ class DynamoDBClient:
                 ttl_timestamp = item.get("ttl_timestamp", 0)
 
                 if ttl_timestamp > 0 and current_timestamp > ttl_timestamp:
-                    logger.warning(f"Temporary analysis data has expired for key: {reference_key}")
+                    logger.warning("Temporary analysis data has expired for key: %s", reference_key)
                     return None
 
                 # Check if data is chunked
@@ -649,14 +660,16 @@ class DynamoDBClient:
                         data = json.loads(decompressed_json)
 
                         logger.info(
-                            f"Retrieved and decompressed temporary analysis data for reference key: {reference_key}"
+                            "Retrieved and decompressed temporary analysis data for reference key: %s",
+                            reference_key,
                         )
                         if isinstance(data, dict):
                             data["reference_key"] = reference_key
                         return data if isinstance(data, dict) else None
                     else:
                         logger.error(
-                            f"Compressed data flag set but no compressed_data found for: {reference_key}"
+                            "Compressed data flag set but no compressed_data found for: %s",
+                            reference_key,
                         )
                         return None
 
@@ -664,11 +677,11 @@ class DynamoDBClient:
                 converted_item = self._convert_decimal_to_float(item)
                 return converted_item if isinstance(converted_item, dict) else None
 
-            logger.warning(f"No temporary analysis data found for key: {reference_key}")
+            logger.warning("No temporary analysis data found for key: %s", reference_key)
             return None
 
         except ClientError as e:
-            logger.error(f"Error retrieving temporary analysis data from DynamoDB: {e}")
+            logger.error("Error retrieving temporary analysis data from DynamoDB: %s", e)
             raise
 
     def delete_temporary_analysis_data(self, reference_key: str) -> bool:
@@ -685,7 +698,7 @@ class DynamoDBClient:
             # First get the item to find the timestamp
             item = self.get_temporary_analysis_data(reference_key)
             if not item:
-                logger.info(f"No temporary data to delete for key: {reference_key}")
+                logger.info("No temporary data to delete for key: %s", reference_key)
                 return True
 
             # Delete the item
@@ -695,11 +708,11 @@ class DynamoDBClient:
                     "analysis_timestamp": item["analysis_timestamp"],
                 }
             )
-            logger.info(f"Deleted temporary analysis data for key: {reference_key}")
+            logger.info("Deleted temporary analysis data for key: %s", reference_key)
             return True
 
         except ClientError as e:
-            logger.error(f"Error deleting temporary analysis data from DynamoDB: {e}")
+            logger.error("Error deleting temporary analysis data from DynamoDB: %s", e)
             raise
 
     def save_analysis_result(
@@ -736,7 +749,7 @@ class DynamoDBClient:
             # If result is large (> 300KB), compress it
             if result_size > 300 * 1024:  # 300KB threshold
                 logger.info(
-                    f"Large result detected ({result_size} bytes), compressing before saving..."
+                    "Large result detected (%s bytes), compressing before saving...", result_size
                 )
 
                 # Compress the result
@@ -744,8 +757,12 @@ class DynamoDBClient:
                 compressed_b64 = base64.b64encode(compressed_data).decode("utf-8")
                 compressed_size = len(compressed_b64)
 
+                ratio = compressed_size / result_size
                 logger.info(
-                    f"Compressed result from {result_size} to {compressed_size} bytes (ratio: {compressed_size/result_size:.2%})"
+                    "Compressed result from %s to %s bytes (ratio: %.2f%%)",
+                    result_size,
+                    compressed_size,
+                    ratio * 100,
                 )
 
                 # Save compressed result
@@ -783,7 +800,7 @@ class DynamoDBClient:
             # Save to DynamoDB
             self.table.put_item(Item=item)
 
-            logger.info(f"Saved analysis result with reference key: {reference_key}")
+            logger.info("Saved analysis result with reference key: %s", reference_key)
             return {
                 "status": "success",
                 "result_key": reference_key,
@@ -792,7 +809,7 @@ class DynamoDBClient:
             }
 
         except ClientError as e:
-            logger.error(f"Error saving analysis result to DynamoDB: {e}")
+            logger.error("Error saving analysis result to DynamoDB: %s", e)
             raise
 
     def get_analysis_result(self, reference_key: str) -> str | None:
@@ -823,7 +840,7 @@ class DynamoDBClient:
                 ttl_timestamp = item.get("ttl_timestamp", 0)
 
                 if ttl_timestamp > 0 and current_timestamp > ttl_timestamp:
-                    logger.warning(f"Analysis result has expired for key: {reference_key}")
+                    logger.warning("Analysis result has expired for key: %s", reference_key)
                     return None
 
                 # Check if result is compressed
@@ -838,12 +855,13 @@ class DynamoDBClient:
                         decompressed_result = gzip.decompress(compressed_data).decode("utf-8")
 
                         logger.info(
-                            f"Retrieved and decompressed analysis result for key: {reference_key}"
+                            "Retrieved and decompressed analysis result for key: %s", reference_key
                         )
                         return decompressed_result
                     else:
                         logger.error(
-                            f"Compressed result flag set but no compressed_result found for: {reference_key}"
+                            "Compressed result flag set but no compressed_result found for: %s",
+                            reference_key,
                         )
                         return None
 
@@ -851,11 +869,11 @@ class DynamoDBClient:
                 result = item.get("result_content")
                 return result if isinstance(result, str) else None
 
-            logger.warning(f"No analysis result found for key: {reference_key}")
+            logger.warning("No analysis result found for key: %s", reference_key)
             return None
 
         except ClientError as e:
-            logger.error(f"Error retrieving analysis result from DynamoDB: {e}")
+            logger.error("Error retrieving analysis result from DynamoDB: %s", e)
             raise
 
     def get_multiple_analysis_data(self, reference_keys: list) -> dict[str, Any]:
@@ -885,10 +903,10 @@ class DynamoDBClient:
                     results[key] = {"type": "result", "content": result}
                     continue
 
-                logger.warning(f"No data found for reference key: {key}")
+                logger.warning("No data found for reference key: %s", key)
 
             except Exception as e:
-                logger.error(f"Error retrieving data for key {key}: {e}")
+                logger.error("Error retrieving data for key %s: %s", e, key)
 
         return results
 

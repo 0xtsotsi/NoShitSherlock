@@ -42,7 +42,7 @@ def check_health():
         # Check if health file exists
         if not HEALTH_FILE.exists():
             print(f"UNHEALTHY: Health file does not exist: {HEALTH_FILE}", flush=True)
-            logger.error(f"Health file does not exist: {HEALTH_FILE}")
+            logger.error("Health file does not exist: %s", HEALTH_FILE)
             return False
 
         # Check file modification time
@@ -52,22 +52,25 @@ def check_health():
 
         if file_age > HEALTH_TIMEOUT_SECONDS:
             print(
-                f"UNHEALTHY: Health file is stale (age: {file_age:.1f}s > {HEALTH_TIMEOUT_SECONDS}s)",
+                f"UNHEALTHY: Health file is stale (age: {file_age:.1f}s > "
+                f"{HEALTH_TIMEOUT_SECONDS}s)",
                 flush=True,
             )
             logger.error(
-                f"Health file is stale - last updated {file_age:.1f}s ago (threshold: {HEALTH_TIMEOUT_SECONDS}s)"
+                "Health file is stale - last updated %.1fs ago (threshold: %ss)",
+                file_age,
+                HEALTH_TIMEOUT_SECONDS,
             )
             return False
 
         # Worker is healthy
         print(f"HEALTHY: Worker is alive (last update: {file_age:.1f}s ago)", flush=True)
-        logger.info(f"Worker is healthy - health file updated {file_age:.1f}s ago")
+        logger.info("Worker is healthy - health file updated %.1fs ago", file_age)
         return True
 
-    except Exception as e:
+    except OSError as e:
         print(f"UNHEALTHY: Health check error: {e}", flush=True)
-        logger.error(f"Health check failed with error: {e}", exc_info=True)
+        logger.error("Health check failed with error: %s", e, exc_info=True)
         return False
 
 

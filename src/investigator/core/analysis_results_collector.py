@@ -57,7 +57,7 @@ class AnalysisResultsCollector:
             self.base_sections = [
                 step["name"] for step in self.base_prompts_config.get("processing_order", [])
             ]
-            logger.info(f"Extracted {len(self.base_sections)} base sections from config")
+            logger.info("Extracted %s base sections from config", len(self.base_sections))
         else:
             logger.warning("No base prompts configuration provided")
             self.base_sections = []
@@ -87,7 +87,7 @@ class AnalysisResultsCollector:
             required=required,
             context_dependencies=context_dependencies or [],
         )
-        logger.debug(f"Tracked step: {step_name} with key: {result_key}")
+        logger.debug("Tracked step: %s with key: %s", result_key, step_name)
 
     def validate_required_sections(self, processing_order: list[dict]) -> tuple[bool, list[str]]:
         """
@@ -111,7 +111,7 @@ class AnalysisResultsCollector:
         is_valid = len(missing_sections) == 0
 
         if not is_valid:
-            logger.warning(f"Missing required sections: {missing_sections}")
+            logger.warning("Missing required sections: %s", missing_sections)
 
         return is_valid, missing_sections
 
@@ -134,9 +134,9 @@ class AnalysisResultsCollector:
         all_present = len(missing_base_sections) == 0
 
         if not all_present:
-            logger.warning(f"Missing base sections: {missing_base_sections}")
+            logger.warning("Missing base sections: %s", missing_base_sections)
         else:
-            logger.info(f"All {len(self.base_sections)} base sections are present")
+            logger.info("All %s base sections are present", len(self.base_sections))
 
         # Special check for monitoring section
         if "monitoring" in self.base_sections and "monitoring" not in tracked_sections:
@@ -198,12 +198,12 @@ class AnalysisResultsCollector:
                 content = cached_content
                 use_cached = True
                 cached_count += 1
-                logger.info(f"Using cached result for step: {step_name} (v{current_version})")
+                logger.info("Using cached result for step: %s (v%s)", current_version, step_name)
             elif step_name in results_map:
                 # Use new result if available
                 content = results_map[step_name]
                 new_count += 1
-                logger.info(f"Using new result for step: {step_name} (v{current_version})")
+                logger.info("Using new result for step: %s (v%s)", current_version, step_name)
             elif cached_content:
                 # Fallback to cached even if version mismatch (better than nothing)
                 content = cached_content
@@ -241,9 +241,9 @@ class AnalysisResultsCollector:
             else:
                 # Check if this was a required step
                 if step_config.get("required", True):
-                    logger.error(f"Missing required step in results: {step_name}")
+                    logger.error("Missing required step in results: %s", step_name)
                 else:
-                    logger.info(f"Optional step not in results: {step_name}")
+                    logger.info("Optional step not in results: %s", step_name)
 
         logger.info(
             f"Combined {len(combined_results)} results from {len(processing_order)} steps "
@@ -255,7 +255,7 @@ class AnalysisResultsCollector:
             result_names = {r["name"] for r in combined_results}
             missing_base = [s for s in self.base_sections if s not in result_names]
             if missing_base:
-                logger.error(f"Base sections missing from combined results: {missing_base}")
+                logger.error("Base sections missing from combined results: %s", missing_base)
 
             # Special validation for monitoring section
             if "monitoring" in self.base_sections and "monitoring" not in result_names:
@@ -378,6 +378,6 @@ class AnalysisResultsCollector:
         versions = {}
         for name, content in prompts_content.items():
             versions[name] = self.extract_prompt_version(content)
-            logger.debug(f"Prompt {name} has version {versions[name]}")
+            logger.debug("Prompt %s has version {versions[name]}", name)
 
         return versions

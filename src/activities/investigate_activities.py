@@ -38,7 +38,7 @@ async def update_repos_list() -> dict[str, Any]:
             "update_repos.py",
         )
 
-        activity.logger.info(f"Running update_repos.py script at: {script_path}")
+        activity.logger.info("Running update_repos.py script at: %s", script_path)
 
         # Run the script using the same Python interpreter
         result = subprocess.run(
@@ -89,7 +89,7 @@ async def update_repos_list() -> dict[str, Any]:
         error_msg = "Update repos script timed out after 5 minutes"
         activity.logger.error(error_msg)
         return {"status": "failed", "error": error_msg}
-    except Exception as e:
+    except (OSError, subprocess.SubprocessError) as e:
         error_msg = f"Failed to run update repos script: {e!s}"
         activity.logger.error(error_msg)
         return {"status": "failed", "error": error_msg}
@@ -123,7 +123,7 @@ async def read_repos_config() -> dict[str, Any]:
             result: dict[str, Any] = repos_data
             return result
     except Exception as e:
-        activity.logger.error(f"Failed to read repos.json: {e!s}")
+        activity.logger.error("Failed to read repos.json: %s", e)
         return {"error": str(e), "repositories": {}}
 
 
@@ -143,7 +143,7 @@ def _read_arch_file_content(arch_file_path: str) -> str:
                 return f.read()
         else:
             return ""
-    except Exception as e:
+    except OSError as e:
         return f"Error reading arch file: {e!s}"
 
 
@@ -163,7 +163,7 @@ async def save_to_arch_hub(arch_files: list[dict[str, Any]]) -> dict[str, Any]:
     # Import here to avoid workflow sandbox issues
     from investigator.core.config import Config
 
-    activity.logger.info(f"Starting to save architecture files to {Config.ARCH_HUB_REPO_NAME}")
+    activity.logger.info("Starting to save architecture files to %s", Config.ARCH_HUB_REPO_NAME)
     with contextlib.suppress(Exception):
         activity.heartbeat("start:save_to_arch_hub")
 
@@ -176,13 +176,13 @@ async def save_to_arch_hub(arch_files: list[dict[str, Any]]) -> dict[str, Any]:
             repo_url = Config.get_arch_hub_repo_url()
             repo_dir = os.path.join(temp_dir, Config.ARCH_HUB_REPO_NAME)
 
-            activity.logger.info(f"Cloning repository: {repo_url}")
+            activity.logger.info("Cloning repository: %s", repo_url)
 
             # Use GitRepositoryManager which handles GitHub token authentication
             git_manager = GitRepositoryManager(activity.logger)
             cloned_repo_path = git_manager.clone_or_update(repo_url, repo_dir)
 
-            activity.logger.info(f"Repository cloned successfully to: {cloned_repo_path}")
+            activity.logger.info("Repository cloned successfully to: %s", cloned_repo_path)
 
             # Send heartbeat after cloning
             with contextlib.suppress(Exception):
@@ -203,7 +203,7 @@ async def save_to_arch_hub(arch_files: list[dict[str, Any]]) -> dict[str, Any]:
                 arch_content = arch_data.get("arch_file_content", "")
 
                 if not repo_name or not arch_content:
-                    activity.logger.warning(f"Skipping empty architecture data for: {repo_name}")
+                    activity.logger.warning("Skipping empty architecture data for: %s", repo_name)
                     continue
 
                 # Create filename based on repo name
@@ -220,7 +220,7 @@ async def save_to_arch_hub(arch_files: list[dict[str, Any]]) -> dict[str, Any]:
                 else:
                     saved_files.append(filename)
 
-                activity.logger.info(f"Saved architecture file: {saved_files[-1]}")
+                activity.logger.info("Saved architecture file: %s", saved_files[-1])
                 with contextlib.suppress(Exception):
                     activity.heartbeat(f"saved:{filename}")
 
@@ -340,10 +340,10 @@ async def save_to_arch_hub(arch_files: list[dict[str, Any]]) -> dict[str, Any]:
             }
 
         except asyncio.CancelledError:
-            activity.logger.warning(f"Save to {Config.ARCH_HUB_REPO_NAME} cancelled")
+            activity.logger.warning("Save to %s cancelled", Config.ARCH_HUB_REPO_NAME)
             raise
         except Exception as e:
-            activity.logger.error(f"Failed to save architecture files: {e!s}")
+            activity.logger.error("Failed to save architecture files: %s", e)
             # Raise exception to properly signal activity failure to Temporal
             raise Exception(f"Failed to save architecture files: {e!s}") from e
 
@@ -367,7 +367,7 @@ async def save_prompt_context_activity(
     Returns:
         Updated context dictionary with data reference key
     """
-    activity.logger.info(f"Saving prompt data for step: {context_dict.get('step_name')}")
+    activity.logger.info("Saving prompt data for step: %s", context_dict.get("step_name"))
 
     try:
         # Import here to avoid workflow sandbox issues
@@ -420,13 +420,13 @@ async def save_prompt_context_activity(
         # Save the prompt data
         data_key = context.save_prompt_data(prompt_content, repo_structure)
 
-        activity.logger.info(f"Successfully saved prompt data with key: {data_key}")
+        activity.logger.info("Successfully saved prompt data with key: %s", data_key)
 
         # Return updated context as dictionary
         return {"status": "success", "context": context.to_dict()}
 
     except Exception as e:
-        activity.logger.error(f"Failed to save prompt context: {e!s}")
+        activity.logger.error("Failed to save prompt context: %s", e)
         raise Exception(f"Failed to save prompt context: {e!s}") from e
 
 
@@ -441,7 +441,7 @@ async def retrieve_all_results_activity(manager_dict: dict[str, Any]) -> dict[st
     Returns:
         Dictionary with all results content
     """
-    activity.logger.info(f"Retrieving all results for repo: {manager_dict.get('repo_name')}")
+    activity.logger.info("Retrieving all results for repo: %s", manager_dict.get("repo_name"))
 
     try:
         # Import here to avoid workflow sandbox issues
@@ -455,11 +455,11 @@ async def retrieve_all_results_activity(manager_dict: dict[str, Any]) -> dict[st
         # Retrieve all results
         results = manager.retrieve_all_results()
 
-        activity.logger.info(f"Successfully retrieved {len(results)} results")
+        activity.logger.info("Successfully retrieved %s results", len(results))
         return {"status": "success", "results": results}
 
     except Exception as e:
-        activity.logger.error(f"Failed to retrieve analysis results: {e!s}")
+        activity.logger.error("Failed to retrieve analysis results: %s", e)
         raise Exception(f"Failed to retrieve analysis results: {e!s}") from e
 
 
@@ -474,7 +474,7 @@ async def cleanup_temporary_analysis_data_activity(reference_key: str) -> dict[s
     Returns:
         Dictionary with cleanup status
     """
-    activity.logger.info(f"Cleaning up temporary analysis data with key: {reference_key}")
+    activity.logger.info("Cleaning up temporary analysis data with key: %s", reference_key)
 
     try:
         # Import here to avoid workflow sandbox issues
@@ -496,7 +496,7 @@ async def cleanup_temporary_analysis_data_activity(reference_key: str) -> dict[s
             return {"status": "not_found", "message": f"No data found for key: {reference_key}"}
 
     except Exception as e:
-        activity.logger.error(f"Failed to cleanup temporary analysis data: {e!s}")
+        activity.logger.error("Failed to cleanup temporary analysis data: %s", e)
         # Don't raise exception for cleanup failures
         return {"status": "failed", "error": str(e)}
 
@@ -525,7 +525,7 @@ async def analyze_with_claude_context(
     repo_name = context_dict.get("repo_name")
     step_name = context_dict.get("step_name")
 
-    activity.logger.info(f"Starting Claude analysis for step: {step_name}")
+    activity.logger.info("Starting Claude analysis for step: %s", step_name)
 
     try:
         # Import here to avoid workflow sandbox issues
@@ -545,7 +545,7 @@ async def analyze_with_claude_context(
             activity.logger.info(
                 f"Checking prompt cache for {repo_name}/{step_name} at commit {latest_commit[:8]} version={prompt_version}"
             )
-            activity.logger.info(f"DEBUG: Full context_dict = {context_dict}")
+            activity.logger.info("DEBUG: Full context_dict = %s", context_dict)
 
             # Check if this step should be forced (bypass cache)
             force_section = (
@@ -600,7 +600,7 @@ async def analyze_with_claude_context(
                     )
                     result_key = cache_key_obj.to_storage_key()
 
-                activity.logger.info(f"Using cached result with key: {result_key}")
+                activity.logger.info("Using cached result with key: %s", result_key)
 
                 # Update context with the result reference key
                 context_dict_with_result = context_dict.copy()
@@ -655,7 +655,7 @@ async def analyze_with_claude_context(
             prompt_content, repo_structure, context_to_use, config_overrides=config_overrides
         )
 
-        activity.logger.info(f"Claude analysis completed successfully ({len(result)} characters)")
+        activity.logger.info("Claude analysis completed successfully (%s characters)", len(result))
 
         # Save the result as a cache entry (this is the ONLY save we need)
         result_key = None
@@ -702,10 +702,10 @@ async def analyze_with_claude_context(
                     f"Failed to save result: {cache_save_result.get('message')}"
                 ) from None
         except Exception as e:
-            activity.logger.error(f"Failed to save result: {e!s}")
+            activity.logger.error("Failed to save result: %s", e)
             raise
 
-        activity.logger.info(f"Result saved with key: {result_key}")
+        activity.logger.info("Result saved with key: %s", result_key)
 
         # Debug: Verify the context has the result key
         context_dict_after_save = context.to_dict()
@@ -724,7 +724,7 @@ async def analyze_with_claude_context(
         )
 
     except Exception as e:
-        activity.logger.error(f"Claude analysis failed: {e!s}")
+        activity.logger.error("Claude analysis failed: %s", e)
         raise Exception(f"Failed to analyze with Claude: {e!s}") from e
 
 
@@ -740,7 +740,7 @@ async def clone_repository_activity(repo_url: str, repo_name: str) -> dict[str, 
     Returns:
         Dictionary with clone results including temp_dir and repo_path
     """
-    activity.logger.info(f"Cloning repository: {repo_name}")
+    activity.logger.info("Cloning repository: %s", repo_name)
 
     try:
         # Import here to avoid workflow sandbox issues
@@ -761,9 +761,9 @@ async def clone_repository_activity(repo_url: str, repo_name: str) -> dict[str, 
         # Create unique directory name to prevent conflicts in parallel execution
         repo_name_from_url = Utils.extract_repo_name(repo_url)
         unique_id = str(uuid.uuid4())[:8]  # Use first 8 characters of UUID
-        temp_root = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "temp"
-        )
+        # Use project root temp directory instead of src/temp
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        temp_root = os.path.join(project_root, "temp")
         repo_dir = os.path.join(temp_root, f"{repo_name_from_url}_{unique_id}")
 
         # Try to clone the repository with different strategies
@@ -772,12 +772,12 @@ async def clone_repository_activity(repo_url: str, repo_name: str) -> dict[str, 
 
         # Strategy 1: Try normal clone first
         try:
-            activity.logger.info(f"Attempting normal clone for {repo_name}")
+            activity.logger.info("Attempting normal clone for %s", repo_name)
             repo_path = git_manager.clone_or_update(repo_url, repo_dir)
             temp_dir = repo_dir
         except Exception as e:
             last_error = e
-            activity.logger.warning(f"Normal clone failed: {e!s}")
+            activity.logger.warning("Normal clone failed: %s", e)
 
             # Check if it's a resource issue (exit code -9 or similar)
             if "exit code(-9)" in str(e) or "Killed" in str(e):
@@ -789,13 +789,13 @@ async def clone_repository_activity(repo_url: str, repo_name: str) -> dict[str, 
 
                 # Strategy 2: Try shallow clone with depth=1
                 try:
-                    activity.logger.info(f"Attempting shallow clone (depth=1) for {repo_name}")
+                    activity.logger.info("Attempting shallow clone (depth=1) for %s", repo_name)
                     repo_path = _shallow_clone_repository(
                         repo_url, repo_dir, depth=1, logger=logger
                     )
                     temp_dir = repo_dir
                 except Exception as shallow_error:
-                    activity.logger.warning(f"Shallow clone with depth=1 failed: {shallow_error!s}")
+                    activity.logger.warning("Shallow clone with depth=1 failed: %s", shallow_error)
 
                     # Clean up failed attempt
                     if os.path.exists(repo_dir):
@@ -803,12 +803,12 @@ async def clone_repository_activity(repo_url: str, repo_name: str) -> dict[str, 
 
                     # Strategy 3: Try minimal clone (single branch, no tags, depth=1)
                     try:
-                        activity.logger.info(f"Attempting minimal clone for {repo_name}")
+                        activity.logger.info("Attempting minimal clone for %s", repo_name)
                         repo_path = _minimal_clone_repository(repo_url, repo_dir, logger=logger)
                         temp_dir = repo_dir
                     except Exception as minimal_error:
                         last_error = minimal_error
-                        activity.logger.error(f"All clone strategies failed for {repo_name}")
+                        activity.logger.error("All clone strategies failed for %s", repo_name)
 
             # If not a resource issue, raise the original error
             if repo_path is None and last_error:
@@ -817,7 +817,7 @@ async def clone_repository_activity(repo_url: str, repo_name: str) -> dict[str, 
         if repo_path is None:
             raise Exception("Failed to clone repository after all strategies")
 
-        activity.logger.info(f"Repository cloned successfully to: {repo_path}")
+        activity.logger.info("Repository cloned successfully to: %s", repo_path)
 
         return {
             "status": "success",
@@ -827,7 +827,7 @@ async def clone_repository_activity(repo_url: str, repo_name: str) -> dict[str, 
         }
 
     except Exception as e:
-        activity.logger.error(f"Failed to clone repository {repo_name}: {e!s}")
+        activity.logger.error("Failed to clone repository %s: %s", repo_name, e)
         raise Exception(f"Failed to clone repository: {e!s}") from e
 
 
@@ -870,14 +870,14 @@ def _shallow_clone_repository(repo_url: str, target_dir: str, depth: int = 1, lo
     ]
 
     if logger:
-        logger.info(f"Running shallow clone: depth={depth}")
+        logger.info("Running shallow clone: depth=%s", depth)
 
     # Mask the token in command for logging
     log_cmd = " ".join(cmd)
     if github_token and github_token in log_cmd:
         log_cmd = log_cmd.replace(github_token, "***HIDDEN***")
     if logger:
-        logger.debug(f"Clone command: {log_cmd}")
+        logger.debug("Clone command: %s", log_cmd)
 
     result = subprocess.run(
         cmd, check=False, capture_output=True, text=True, timeout=600
@@ -932,7 +932,7 @@ def _minimal_clone_repository(repo_url: str, target_dir: str, logger=None) -> st
         safe_url = repo_url
         if github_token and github_token in auth_url:
             safe_url = auth_url.replace(github_token, "***HIDDEN***")
-        logger.debug(f"Adding remote origin: {safe_url}")
+        logger.debug("Adding remote origin: %s", safe_url)
     subprocess.run(["git", "remote", "add", "origin", auth_url], cwd=target_dir, check=True)
 
     # Configure to minimize memory usage
@@ -980,7 +980,7 @@ async def analyze_repository_structure_activity(repo_path: str) -> dict[str, Any
     Returns:
         Dictionary with structure analysis results
     """
-    activity.logger.info(f"Analyzing repository structure: {repo_path}")
+    activity.logger.info("Analyzing repository structure: %s", repo_path)
 
     try:
         # Import here to avoid workflow sandbox issues
@@ -1005,7 +1005,7 @@ async def analyze_repository_structure_activity(repo_path: str) -> dict[str, Any
         return {"status": "success", "repo_structure": repo_structure}
 
     except Exception as e:
-        activity.logger.error(f"Failed to analyze repository structure: {e!s}")
+        activity.logger.error("Failed to analyze repository structure: %s", e)
         raise Exception(f"Failed to analyze repository structure: {e!s}") from e
 
 
@@ -1024,7 +1024,7 @@ async def get_prompts_config_activity(
     Returns:
         Dictionary with prompts configuration
     """
-    activity.logger.info(f"Getting prompts configuration for type: {repo_type}")
+    activity.logger.info("Getting prompts configuration for type: %s", repo_type)
 
     try:
         # Import here to avoid workflow sandbox issues
@@ -1079,13 +1079,13 @@ async def get_prompts_config_activity(
 
                     version = AnalysisResultsCollector.extract_prompt_version(prompt_content)
                     prompt_versions[step_name] = version
-                    activity.logger.debug(f"   {step_name}: v{version} from {prompt_file}")
+                    activity.logger.debug("   %s: v%s from %s", step_name, version, prompt_file)
 
                 except Exception as e:
-                    activity.logger.warning(f"Failed to read prompt {prompt_file}: {e}")
+                    activity.logger.warning("Failed to read prompt %s: %s", prompt_file, e)
                     prompt_versions[step_name] = "1"  # Default version
             else:
-                activity.logger.warning(f"No file specified for step {step_name}")
+                activity.logger.warning("No file specified for step %s", step_name)
                 prompt_versions[step_name] = "1"  # Default version
 
         activity.logger.info(
@@ -1100,7 +1100,7 @@ async def get_prompts_config_activity(
         }
 
     except Exception as e:
-        activity.logger.error(f"Failed to get prompts configuration: {e!s}")
+        activity.logger.error("Failed to get prompts configuration: %s", e)
         raise Exception(f"Failed to get prompts configuration: {e!s}") from e
 
 
@@ -1116,7 +1116,7 @@ async def read_prompt_file_activity(prompts_dir: str, file_name: str) -> dict[st
     Returns:
         Dictionary with prompt content and version
     """
-    activity.logger.info(f"Reading prompt file: {file_name}")
+    activity.logger.info("Reading prompt file: %s", file_name)
 
     try:
         # Import here to avoid workflow sandbox issues
@@ -1156,7 +1156,7 @@ async def read_prompt_file_activity(prompts_dir: str, file_name: str) -> dict[st
         }
 
     except Exception as e:
-        activity.logger.error(f"Failed to read prompt file {file_name}: {e!s}")
+        activity.logger.error("Failed to read prompt file %s: %s", file_name, e)
         raise Exception(f"Failed to read prompt file: {e!s}") from e
 
 
@@ -1174,7 +1174,7 @@ async def cleanup_repository_activity(
     Returns:
         Dictionary with cleanup results
     """
-    activity.logger.info(f"Cleaning up repository at: {repo_path}")
+    activity.logger.info("Cleaning up repository at: %s", repo_path)
 
     try:
         import os
@@ -1187,18 +1187,20 @@ async def cleanup_repository_activity(
             try:
                 shutil.rmtree(repo_path, ignore_errors=True)
                 cleaned_paths.append(repo_path)
-                activity.logger.info(f"Removed repository directory: {repo_path}")
+                activity.logger.info("Removed repository directory: %s", repo_path)
             except Exception as e:
-                activity.logger.warning(f"Failed to remove repository directory {repo_path}: {e!s}")
+                activity.logger.warning(
+                    "Failed to remove repository directory %s: %s", repo_path, e
+                )
 
         # Clean up temp directory if it's different from repo_path
         if temp_dir and temp_dir != repo_path and os.path.exists(temp_dir):
             try:
                 shutil.rmtree(temp_dir, ignore_errors=True)
                 cleaned_paths.append(temp_dir)
-                activity.logger.info(f"Removed temp directory: {temp_dir}")
+                activity.logger.info("Removed temp directory: %s", temp_dir)
             except Exception as e:
-                activity.logger.warning(f"Failed to remove temp directory {temp_dir}: {e!s}")
+                activity.logger.warning("Failed to remove temp directory %s: %s", temp_dir, e)
 
         # Also clean up any .arch.md files that might have been created in the temp directory
         if temp_dir:
@@ -1209,12 +1211,12 @@ async def cleanup_repository_activity(
                 try:
                     os.remove(arch_file)
                     cleaned_paths.append(arch_file)
-                    activity.logger.info(f"Removed arch file: {arch_file}")
+                    activity.logger.info("Removed arch file: %s", arch_file)
                 except Exception as e:
-                    activity.logger.warning(f"Failed to remove arch file {arch_file}: {e!s}")
+                    activity.logger.warning("Failed to remove arch file %s: %s", arch_file, e)
 
         if cleaned_paths:
-            activity.logger.info(f"Successfully cleaned up {len(cleaned_paths)} paths")
+            activity.logger.info("Successfully cleaned up %s paths", len(cleaned_paths))
             return {
                 "status": "success",
                 "message": f"Cleaned up {len(cleaned_paths)} paths",
@@ -1229,7 +1231,7 @@ async def cleanup_repository_activity(
             }
 
     except Exception as e:
-        activity.logger.error(f"Failed to clean up repository: {e!s}")
+        activity.logger.error("Failed to clean up repository: %s", e)
         # Don't raise exception - cleanup failures shouldn't fail the workflow
         return {"status": "failed", "message": f"Cleanup failed: {e!s}", "cleaned_paths": []}
 
@@ -1264,12 +1266,12 @@ async def write_analysis_result_activity(repo_path: str, final_analysis: str) ->
         # Write final analysis to file
         arch_file_path = file_manager.write_analysis(repo_path, final_analysis)
 
-        activity.logger.info(f"Analysis written to: {arch_file_path}")
+        activity.logger.info("Analysis written to: %s", arch_file_path)
 
         return {"status": "success", "arch_file_path": arch_file_path}
 
     except Exception as e:
-        activity.logger.error(f"Failed to write analysis result: {e!s}")
+        activity.logger.error("Failed to write analysis result: %s", e)
         raise Exception(f"Failed to write analysis result: {e!s}") from e
 
 
@@ -1284,7 +1286,7 @@ async def read_dependencies_activity(repo_path: str) -> dict[str, Any]:
     Returns:
         Dictionary with formatted dependency content ready for prompt inclusion
     """
-    activity.logger.info(f"Reading dependency files from: {repo_path}")
+    activity.logger.info("Reading dependency files from: %s", repo_path)
 
     try:
         import json
@@ -1458,7 +1460,9 @@ async def read_dependencies_activity(repo_path: str) -> dict[str, Any]:
                             production_deps.append({"full_path": relative_path, "content": content})
 
                     except Exception as e:
-                        activity.logger.warning(f"Failed to read dependency file {file_path}: {e}")
+                        activity.logger.warning(
+                            "Failed to read dependency file %s: %s", file_path, e
+                        )
                         continue
 
             # Search for dev dependency files
@@ -1509,7 +1513,7 @@ async def read_dependencies_activity(repo_path: str) -> dict[str, Any]:
         }
 
     except Exception as e:
-        activity.logger.error(f"Failed to read dependencies: {e!s}")
+        activity.logger.error("Failed to read dependencies: %s", e)
         return {
             "status": "error",
             "formatted_content": "Error reading dependency files!",
@@ -1661,7 +1665,7 @@ async def cache_dependencies_activity(
     Returns:
         dict with deps_reference_key
     """
-    activity.logger.info(f"Caching dependencies for repository: {repo_name}")
+    activity.logger.info("Caching dependencies for repository: %s", repo_name)
 
     try:
         import os
@@ -1695,7 +1699,7 @@ async def cache_dependencies_activity(
         )
 
         if result["status"] == "success":
-            activity.logger.info(f"Successfully cached dependencies for {repo_name}")
+            activity.logger.info("Successfully cached dependencies for %s", repo_name)
             return {"status": "success", "deps_reference_key": result["reference_key"]}
         else:
             activity.logger.error(
@@ -1708,5 +1712,5 @@ async def cache_dependencies_activity(
             }
 
     except Exception as e:
-        activity.logger.error(f"Failed to cache dependencies for {repo_name}: {e!s}")
+        activity.logger.error("Failed to cache dependencies for %s: %s", repo_name, e)
         return {"status": "failed", "deps_reference_key": None, "error": str(e)}

@@ -9,10 +9,10 @@ import logging
 import os
 import sys
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
 from temporalio.client import Client
 from temporalio.contrib.pydantic import pydantic_data_converter
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -51,21 +51,21 @@ async def query_workflow_status(
                     # Use the args parameter for multiple arguments
                     result = await handle.query(query_type, args=[query_type, repo_name])
                     print(f"Query Result ({query_type}): {result}")
-                except Exception as e:
+                except (RuntimeError, ValueError) as e:
                     print(f"Query failed: {e}")
             else:
                 # Basic status info
                 print(f"Workflow Type: {desc.workflow_type}")
                 print(f"Task Queue: {desc.task_queue}")
 
-        except Exception as e:
+        except (ConnectionError, RuntimeError) as e:
             print(f"Failed to get workflow status: {e}")
             return False
 
         return True
 
-    except Exception as e:
-        logger.error(f"Failed to connect to Temporal: {e}")
+    except (ConnectionError, RuntimeError) as e:
+        logger.error("Failed to connect to Temporal: %s", e)
         return False
 
 

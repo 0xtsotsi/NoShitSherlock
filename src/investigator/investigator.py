@@ -51,7 +51,8 @@ class ClaudeInvestigator:
         Initialize the Claude investigator.
 
         Args:
-            api_key: Claude API key. If not provided, will try to get from environment variable ANTHROPIC_API_KEY
+            api_key: Claude API key. If not provided, will try to get from environment
+                variable ANTHROPIC_API_KEY
             log_level: Logging level (DEBUG, INFO, WARNING, ERROR)
             workflow_context: Optional Temporal workflow context for activity execution
         """
@@ -62,7 +63,8 @@ class ClaudeInvestigator:
         if not self.api_key:
             self.logger.error("Claude API key is required")
             raise ValueError(
-                "Claude API key is required. Set ANTHROPIC_API_KEY environment variable or pass api_key parameter."
+                "Claude API key is required. Set ANTHROPIC_API_KEY environment variable "
+                "or pass api_key parameter."
             )
 
         self.logger.info("Initializing Claude Investigator")
@@ -167,16 +169,17 @@ class ClaudeInvestigator:
 
         Args:
             repo_location: URL or path to the repository to investigate
-            repo_type: Optional repository type override ('generic', 'backend', 'frontend', 'infra-as-code', 'libraries')
+            repo_type: Optional repository type override ('generic', 'backend', 'frontend',
+                'infra-as-code', 'libraries')
 
         Returns:
             Path to the generated {repository-name}-arch.md file
         """
         # Sanitize the URL for logging to hide sensitive information
         safe_url = self._sanitize_url_for_logging(repo_location)
-        self.logger.info(f"Starting investigation of repository: {safe_url}")
+        self.logger.info("Starting investigation of repository: %s", safe_url)
         if repo_type:
-            self.logger.info(f"Repository type override: {repo_type}")
+            self.logger.info("Repository type override: %s", repo_type)
         self._heartbeat_safe("start_investigation")
 
         try:
@@ -194,7 +197,7 @@ class ClaudeInvestigator:
             self.logger.info("Step 2: Analyzing repository structure")
             repo_structure = self.repo_analyzer.get_structure(repo_path)
             self.logger.info(
-                f"Repository structure captured ({len(repo_structure.split(chr(10)))} lines)"
+                "Repository structure captured (%s lines)", len(repo_structure.split(chr(10)))
             )
             self._heartbeat_safe("repository_structure_captured")
 
@@ -211,12 +214,12 @@ class ClaudeInvestigator:
             self._heartbeat_safe("final_analysis_written")
 
             self.logger.info(
-                f"Investigation completed successfully. Analysis saved to: {arch_file_path}"
+                "Investigation completed successfully. Analysis saved to: %s", arch_file_path
             )
             return arch_file_path
 
         except Exception as e:
-            self.logger.error(f"Investigation failed: {e!s}")
+            self.logger.error("Investigation failed: {str(e)}")
             raise Exception(f"Failed to investigate repository: {e!s}") from e
 
     def _build_context_from_config(
@@ -268,7 +271,7 @@ class ClaudeInvestigator:
             return self._get_step_context(context_val, step_results)
 
         # Future context types can be added here
-        self.logger.debug(f"Unknown context type: '{context_type}'")
+        self.logger.debug("Unknown context type: '%s'", context_type)
         return ""
 
     def _get_step_context(self, step_name: str, step_results: dict[str, str]) -> str:
@@ -283,10 +286,10 @@ class ClaudeInvestigator:
             Formatted step context or empty string if not found
         """
         if step_name in step_results:
-            self.logger.debug(f"Using context from step: {step_name}")
+            self.logger.debug("Using context from step: %s", step_name)
             return f"\n\n## {step_name} Results\n\n{step_results[step_name]}"
 
-        self.logger.debug(f"Context step '{step_name}' not found")
+        self.logger.debug("Context step '%s' not found", step_name)
         return ""
 
     def _build_exact_prompt(
@@ -338,7 +341,7 @@ class ClaudeInvestigator:
         description = step.get("description", "")
         context_config = step.get("context")
 
-        self.logger.info(f"Processing step: {step_name} - {description}")
+        self.logger.info("Processing step: %s - %s", description, step_name)
         # Heartbeat before starting a potentially long step
         self._heartbeat_safe(f"step_start:{step_name}")
 
@@ -347,17 +350,17 @@ class ClaudeInvestigator:
 
         if prompt_content is None:
             if is_required:
-                self.logger.error(f"Required prompt file not found: {file_name}")
+                self.logger.error("Required prompt file not found: %s", file_name)
                 raise Exception(f"Required prompt file not found: {file_name}")
             else:
-                self.logger.warning(f"Optional prompt file not found, skipping: {file_name}")
+                self.logger.warning("Optional prompt file not found, skipping: %s", file_name)
                 return None
 
         # Build context from configuration
         context_to_use = self._build_context_from_config(context_config, step_results)
 
         # Run analysis
-        self.logger.info(f"Running analysis for: {step_name}")
+        self.logger.info("Running analysis for: %s", step_name)
         try:
             # Get the exact prompt that will be sent to Claude
             exact_prompt = self._build_exact_prompt(prompt_content, repo_structure, context_to_use)
@@ -368,7 +371,7 @@ class ClaudeInvestigator:
             prompt_path = self.file_manager.write_prompt_file(
                 self.temp_dir, step_name, exact_prompt
             )
-            self.logger.debug(f"Exact prompt saved to: {prompt_path}")
+            self.logger.debug("Exact prompt saved to: %s", prompt_path)
 
             # Execute Claude analysis via Temporal activity when in workflow context
             if self.activity_wrapper.is_temporal_context():
@@ -406,18 +409,18 @@ class ClaudeInvestigator:
             result_path = self.file_manager.write_intermediate_result(
                 self.temp_dir, step_name, result
             )
-            self.logger.debug(f"Intermediate result saved to: {result_path}")
+            self.logger.debug("Intermediate result saved to: %s", result_path)
             # Heartbeat after finishing the step
             self._heartbeat_safe(f"step_done:{step_name}")
 
             return {"name": step_name, "description": description, "content": result}
 
-        except Exception as e:
+        except Exception:
             if is_required:
-                self.logger.error(f"Failed to process required step {step_name}: {e!s}")
+                self.logger.error("Failed to process required step %s: {str(e)}", step_name)
                 raise
             else:
-                self.logger.warning(f"Failed to process optional step {step_name}: {e!s}")
+                self.logger.warning("Failed to process optional step %s: {str(e)}", step_name)
                 return None
 
     async def _run_sequential_analysis(
@@ -431,7 +434,7 @@ class ClaudeInvestigator:
         # Get repository type (use override if provided, otherwise default to generic)
         self.logger.info("Determining repository type...")
         prompts_dir = self.type_detector.get_prompts_directory(repo_path, repo_type, repo_url)
-        self.logger.info(f"Using prompts from: {prompts_dir}")
+        self.logger.info("Using prompts from: %s", prompts_dir)
 
         # Read prompts configuration
         prompts_config = self.file_manager.read_prompts_config(prompts_dir)
@@ -507,7 +510,7 @@ class ClaudeInvestigator:
         repo_dir = os.path.join(temp_root, f"{repo_name}_{unique_id}")
         self.temp_dir = repo_dir
 
-        self.logger.debug(f"Using unique temp directory: {self.temp_dir}")
+        self.logger.debug("Using unique temp directory: %s", self.temp_dir)
 
         # Clone or update repository
         try:
@@ -518,7 +521,7 @@ class ClaudeInvestigator:
 
         # Log repository size
         repo_size = Utils.get_directory_size(repo_path)
-        self.logger.info(f"Repository size: {repo_size}")
+        self.logger.info("Repository size: %s", repo_size)
 
         return repo_path
 
@@ -536,9 +539,10 @@ async def investigate_repo(
         repo_location: URL or path to the repository to investigate
         api_key: Claude API key (optional, will use environment variable if not provided)
         log_level: Logging level (DEBUG, INFO, WARNING, ERROR)
-        repo_type: Optional repository type override ('generic', 'backend', 'frontend', 'mobile', 'infra-as-code', 'libraries')
+        repo_type: Optional repository type override ('generic', 'backend', 'frontend',
+            'mobile', 'infra-as-code', 'libraries')
 
-            Returns:
+        Returns:
             Path to the generated {repository-name}-arch.md file
     """
     investigator = ClaudeInvestigator(api_key=api_key, log_level=log_level)
@@ -561,6 +565,6 @@ if __name__ == "__main__":
     try:
         arch_file_path = asyncio.run(investigate_repo(repo_location, api_key, log_level))
         print(f"Investigation complete! Analysis saved to: {arch_file_path}")
-    except Exception as e:
+    except (ValueError, RuntimeError, OSError) as e:
         print(f"Error: {e!s}")
         sys.exit(1)

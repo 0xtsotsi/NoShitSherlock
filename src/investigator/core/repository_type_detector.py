@@ -37,7 +37,7 @@ class RepositoryTypeDetector:
         prompt_dir = repo_type if repo_type else "generic"
 
         if repo_type:
-            self.logger.info(f"Using repository type: {repo_type}")
+            self.logger.info("Using repository type: %s", repo_type)
         else:
             self.logger.info("No repository type specified, defaulting to generic")
 
@@ -53,5 +53,5 @@ class RepositoryTypeDetector:
             prompts_path = src_root / "prompts" / "generic"
             prompt_dir = "generic"
 
-        self.logger.info(f"Using prompts directory: {prompts_path}")
+        self.logger.info("Using prompts directory: %s", prompts_path)
         return str(prompts_path)

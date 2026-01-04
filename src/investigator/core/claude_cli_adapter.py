@@ -30,7 +30,7 @@ class ClaudeCLIAdapter:
         # Verify the CLI works
         self._verify_cli()
 
-        self.logger.info(f"Claude CLI adapter initialized using: {self.cli_path}")
+        self.logger.info("Claude CLI adapter initialized using: %s", self.cli_path)
 
     def _detect_cli_binary(self) -> str:
         """
@@ -64,7 +64,7 @@ class ClaudeCLIAdapter:
             self.logger.error(error_msg)
             raise RuntimeError(error_msg)
 
-        self.logger.debug(f"Detected Claude CLI at: {cli_path}")
+        self.logger.debug("Detected Claude CLI at: %s", cli_path)
         return cli_path
 
     def _verify_cli(self) -> None:
@@ -92,7 +92,7 @@ class ClaudeCLIAdapter:
                 raise RuntimeError(error_msg)
 
             version_output = result.stdout.strip()
-            self.logger.debug(f"Claude CLI version: {version_output}")
+            self.logger.debug("Claude CLI version: %s", version_output)
 
         except subprocess.TimeoutExpired as err:
             error_msg = "Claude CLI verification timed out after 10 seconds"
@@ -132,8 +132,8 @@ class ClaudeCLIAdapter:
         prompt = user_message.get("content", "")
 
         self.logger.info("Sending request to Claude CLI")
-        self.logger.debug(f"Model: {model}, max_tokens: {max_tokens}")
-        self.logger.debug(f"Prompt length: {len(prompt)} characters")
+        self.logger.debug("Model: %s, max_tokens: %s", model, max_tokens)
+        self.logger.debug("Prompt length: {len(prompt)} characters")
 
         try:
             # Prepare the CLI command
@@ -150,7 +150,7 @@ class ClaudeCLIAdapter:
                 "json",  # Request JSON output for easier parsing
             ]
 
-            self.logger.debug(f"Running CLI command: {' '.join(cmd)}")
+            self.logger.debug("Running CLI command: %s", " ".join(cmd))
 
             # Execute the CLI with the prompt as stdin
             result = subprocess.run(
@@ -185,8 +185,10 @@ class ClaudeCLIAdapter:
                 # Not JSON, use the raw text
                 pass
 
-            self.logger.info(f"Received response from Claude CLI ({len(response_text)} characters)")
-            self.logger.debug(f"Response preview: {response_text[:200]}...")
+            self.logger.info(
+                "Received response from Claude CLI (%s characters)", len(response_text)
+            )
+            self.logger.debug("Response preview: %s...", response_text[:200])
 
             # Return a response object that mimics the Anthropic SDK structure
             return {

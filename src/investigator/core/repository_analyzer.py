@@ -51,7 +51,9 @@ class RepositoryAnalyzer:
         if max_depth is None:
             max_depth = self.MAX_DEPTH
 
-        self.logger.debug(f"Scanning repository structure in: {repo_path} (max depth: {max_depth})")
+        self.logger.debug(
+            "Scanning repository structure in: %s (max depth: %s)", max_depth, repo_path
+        )
 
         # Extract repository name from the path
         repo_name = os.path.basename(repo_path.rstrip(os.sep))

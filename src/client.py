@@ -1,15 +1,20 @@
+import asyncio
+import json
+import logging
 import os
 import sys
-
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-import asyncio
-import logging
-from datetime import timedelta
+import uuid
+from datetime import UTC, datetime, timedelta
 
 from temporalio.client import Client
 from temporalio.contrib.pydantic import pydantic_data_converter
+from temporalio.service import TLSConfig
 
+# pylint: disable=wrong-import-position
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# pylint: enable=wrong-import-position
+
+from activities.investigate_activities import read_repos_config
 from models import ConfigOverrides, InvestigateReposRequest, InvestigateSingleRepoRequest
 from workflows.investigate_repos_workflow import InvestigateReposWorkflow
 from workflows.investigate_single_repo_workflow import InvestigateSingleRepoWorkflow
@@ -37,16 +42,14 @@ async def run_investigate_repos_workflow(
         sleep_hours: Optional sleep hours override (supports fractional hours)
         chunk_size: Optional chunk size override (number of repos processed in parallel)
     """
-    from datetime import UTC, datetime
-
     task_queue = os.getenv("TEMPORAL_TASK_QUEUE", "investigate-task-queue")
 
     # Generate unique workflow ID with timestamp to avoid conflicts
     timestamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
     workflow_id = f"investigate-repos-workflow-{timestamp}"
 
-    logger.info(f"Starting InvestigateReposWorkflow on task queue: {task_queue}")
-    logger.info(f"Using workflow ID: {workflow_id}")
+    logger.info("Starting InvestigateReposWorkflow on task queue: %s", task_queue)
+    logger.info("Using workflow ID: %s", workflow_id)
     logger.info("Mode: Continuous (runs every X hours)")
 
     if force:
@@ -65,16 +68,16 @@ async def run_investigate_repos_workflow(
     )
 
     if claude_model:
-        logger.info(f"🔧 Claude model override: {claude_model}")
+        logger.info("🔧 Claude model override: %s", claude_model)
 
     if max_tokens:
-        logger.info(f"🔧 Max tokens override: {max_tokens}")
+        logger.info("🔧 Max tokens override: %s", max_tokens)
 
     if sleep_hours:
-        logger.info(f"🔧 Sleep hours override: {sleep_hours}")
+        logger.info("🔧 Sleep hours override: %s", sleep_hours)
 
     if chunk_size:
-        logger.info(f"🔧 Chunk size override: {chunk_size}")
+        logger.info("🔧 Chunk size override: %s", chunk_size)
 
     result = await client.execute_workflow(
         InvestigateReposWorkflow.run,
@@ -84,7 +87,7 @@ async def run_investigate_repos_workflow(
         task_timeout=timedelta(minutes=60),  # 60 minutes for workflow task execution
         execution_timeout=timedelta(days=365),  # Long timeout for continuous mode
     )
-    logger.info(f"InvestigateReposWorkflow result: {result}")
+    logger.info("InvestigateReposWorkflow result: %s", result)
     return result
 
 
@@ -108,8 +111,6 @@ async def run_investigate_single_repo_workflow(
         repo_type: Optional repository type override
         force_section: Optional section name to force re-execution
     """
-    import uuid
-
     task_queue = os.getenv("TEMPORAL_TASK_QUEUE", "investigate-task-queue")
 
     # Determine if repo_identifier is a URL or a name from repos.json
@@ -127,12 +128,10 @@ async def run_investigate_single_repo_workflow(
     else:
         # Repository name provided - look it up in repos.json
         try:
-            from activities.investigate_activities import read_repos_config
-
             repos_data = await read_repos_config()
 
             if "error" in repos_data:
-                logger.error(f"Failed to read repos.json: {repos_data['error']}")
+                logger.error("Failed to read repos.json: %s", repos_data["error"])
                 return {
                     "status": "failed",
                     "error": f"Failed to read repos.json: {repos_data['error']}",
@@ -162,18 +161,18 @@ async def run_investigate_single_repo_workflow(
             detected_repo_type = repo_info.get("type", "generic")
 
             if not repo_url:
-                logger.error(f"No URL found for repository: {repo_identifier}")
+                logger.error("No URL found for repository: %s", repo_identifier)
                 return {
                     "status": "failed",
                     "error": f"No URL found for repository: {repo_identifier}",
                 }
 
-        except Exception as e:
-            logger.error(f"Error reading repos.json: {e!s}")
+        except (json.JSONDecodeError, OSError) as e:
+            logger.error("Error reading repos.json: %s", e)
             return {"status": "failed", "error": f"Error reading repos.json: {e!s}"}
 
     if not repo_url:
-        logger.error(f"No URL found for repository: {repo_identifier}")
+        logger.error("No URL found for repository: %s", repo_identifier)
         return {"status": "failed", "error": f"No URL found for repository: {repo_identifier}"}
 
     # Use provided repo_type or fall back to detected type
@@ -182,10 +181,10 @@ async def run_investigate_single_repo_workflow(
     # Generate a unique workflow ID for this investigation
     workflow_id = f"investigate-single-repo-{repo_name}-{uuid.uuid4().hex[:8]}"
 
-    logger.info(f"Starting InvestigateSingleRepoWorkflow on task queue: {task_queue}")
-    logger.info(f"Using workflow ID: {workflow_id}")
-    logger.info(f"Repository: {repo_name} ({final_repo_type})")
-    logger.info(f"URL: {repo_url}")
+    logger.info("Starting InvestigateSingleRepoWorkflow on task queue: %s", task_queue)
+    logger.info("Using workflow ID: %s", workflow_id)
+    logger.info("Repository: %s (%s)", repo_name, final_repo_type)
+    logger.info("URL: %s", repo_url)
 
     if force:
         logger.info("🚀 Force flag enabled - will investigate regardless of cache")
@@ -198,13 +197,13 @@ async def run_investigate_single_repo_workflow(
         )
 
         if claude_model:
-            logger.info(f"🔧 Claude model override: {claude_model}")
+            logger.info("🔧 Claude model override: %s", claude_model)
 
         if max_tokens:
-            logger.info(f"🔧 Max tokens override: {max_tokens}")
+            logger.info("🔧 Max tokens override: %s", max_tokens)
 
         if force_section:
-            logger.info(f"🚀 Force section override: {force_section}")
+            logger.info("🚀 Force section override: %s", force_section)
 
     # Create Pydantic request model instead of dictionary
     request = InvestigateSingleRepoRequest(
@@ -223,7 +222,7 @@ async def run_investigate_single_repo_workflow(
         task_timeout=timedelta(minutes=60),  # 60 minutes for workflow task execution
         execution_timeout=timedelta(hours=2),  # 2 hours max for single repo investigation
     )
-    logger.info(f"InvestigateSingleRepoWorkflow result: {result}")
+    logger.info("InvestigateSingleRepoWorkflow result: %s", result)
     return result
 
 
@@ -234,17 +233,15 @@ async def main():
     temporal_namespace = os.getenv("TEMPORAL_NAMESPACE", "default")
     temporal_api_key = os.getenv("TEMPORAL_API_KEY")
 
-    logger.info(f"Connecting to Temporal server: {temporal_server_url}")
-    logger.info(f"Using namespace: {temporal_namespace}")
-    logger.info(f"API Key present: {'Yes' if temporal_api_key else 'No'}")
+    logger.info("Connecting to Temporal server: %s", temporal_server_url)
+    logger.info("Using namespace: %s", temporal_namespace)
+    logger.info("API Key present: %s", "Yes" if temporal_api_key else "No")
 
     # Configure connection parameters based on environment
     # Only use TLS and API key for non-localhost connections (Temporal Cloud)
     is_localhost = temporal_server_url.startswith("localhost")
 
     if not is_localhost and temporal_api_key:
-        from temporalio.service import TLSConfig
-
         logger.info("Configuring for Temporal Cloud with TLS...")
         # Create client with TLS and API key
         client = await Client.connect(
@@ -285,7 +282,8 @@ async def main():
                         max_tokens = int(arg.split("=", 1)[1])
                     except ValueError:
                         logger.error(
-                            f"Invalid max-tokens value: {arg.split('=', 1)[1]}. Must be an integer."
+                            "Invalid max-tokens value: %s. Must be an integer.",
+                            arg.split("=", 1)[1],
                         )
                         return
                 elif arg.startswith("--sleep-hours="):
@@ -293,7 +291,7 @@ async def main():
                         sleep_hours = float(arg.split("=", 1)[1])
                     except ValueError:
                         logger.error(
-                            f"Invalid sleep-hours value: {arg.split('=', 1)[1]}. Must be a number."
+                            "Invalid sleep-hours value: %s. Must be a number.", arg.split("=", 1)[1]
                         )
                         return
                 elif arg.startswith("--chunk-size="):
@@ -301,7 +299,8 @@ async def main():
                         chunk_size = int(arg.split("=", 1)[1])
                     except ValueError:
                         logger.error(
-                            f"Invalid chunk-size value: {arg.split('=', 1)[1]}. Must be an integer."
+                            "Invalid chunk-size value: %s. Must be an integer.",
+                            arg.split("=", 1)[1],
                         )
                         return
 
@@ -318,7 +317,8 @@ async def main():
             if len(sys.argv) < 3:
                 logger.error("Repository name or URL is required for investigate-single")
                 logger.info(
-                    "Usage: python client.py investigate-single REPO_NAME_OR_URL [--force] [--claude-model=MODEL] [--max-tokens=NUM] [--repo-type=TYPE]"
+                    "Usage: python client.py investigate-single REPO_NAME_OR_URL "
+                    "[--force] [--claude-model=MODEL] [--max-tokens=NUM] [--repo-type=TYPE]"
                 )
                 return
 
@@ -337,7 +337,8 @@ async def main():
                         max_tokens = int(arg.split("=", 1)[1])
                     except ValueError:
                         logger.error(
-                            f"Invalid max-tokens value: {arg.split('=', 1)[1]}. Must be an integer."
+                            "Invalid max-tokens value: %s. Must be an integer.",
+                            arg.split("=", 1)[1],
                         )
                         return
                 elif arg.startswith("--repo-type="):
@@ -355,10 +356,12 @@ async def main():
                 force_section=force_section,
             )
         else:
-            logger.error(f"Unknown workflow: {workflow_name}")
+            logger.error("Unknown workflow: %s", workflow_name)
             logger.info("Available workflows: investigate, investigate-single")
             logger.info(
-                "Usage: python client.py investigate [--force] [--claude-model=MODEL] [--max-tokens=NUM] [--sleep-hours=NUM] [--chunk-size=NUM]"
+                "Usage: python client.py investigate [--force] "
+                "[--claude-model=MODEL] [--max-tokens=NUM] "
+                "[--sleep-hours=NUM] [--chunk-size=NUM]"
             )
             logger.info("Usage: python client.py investigate-single REPO_NAME_OR_URL [options]")
     else:
@@ -369,10 +372,12 @@ async def main():
             "Use 'python client.py investigate --force' to force investigation of all repos."
         )
         logger.info(
-            "Config overrides: --claude-model=MODEL --max-tokens=NUM --sleep-hours=NUM --chunk-size=NUM"
+            "Config overrides: --claude-model=MODEL --max-tokens=NUM "
+            "--sleep-hours=NUM --chunk-size=NUM"
         )
         logger.info(
-            "For single repository investigation: python client.py investigate-single REPO_NAME_OR_URL [options]"
+            "For single repository investigation: "
+            "python client.py investigate-single REPO_NAME_OR_URL [options]"
         )
         await run_investigate_repos_workflow(client)
 

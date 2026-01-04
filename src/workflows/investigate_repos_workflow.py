@@ -39,7 +39,7 @@ class InvestigateReposWorkflow:
             request: Optional InvestigateReposRequest with configuration overrides
             iteration_count: The current iteration number (used internally for Continue-As-New)
         """
-        logger.info(f"Starting InvestigateReposWorkflow - Iteration {iteration_count}")
+        logger.info("Starting InvestigateReposWorkflow - Iteration %s", iteration_count)
 
         # Extract configuration from initial request
         force_first_run = False
@@ -52,8 +52,8 @@ class InvestigateReposWorkflow:
                 try:
                     request = InvestigateReposRequest(**request)
                     logger.info("✅ Successfully converted dict to InvestigateReposRequest")
-                except Exception as e:
-                    logger.error(f"❌ Failed to convert dict to InvestigateReposRequest: {e}")
+                except (ValueError, TypeError) as e:
+                    logger.error("❌ Failed to convert dict to InvestigateReposRequest: %s", e)
                     raise
 
             force_first_run = request.force
@@ -64,9 +64,9 @@ class InvestigateReposWorkflow:
                     config_overrides.claude_model = WorkflowConfig.validate_claude_model(
                         request.claude_model
                     )
-                    logger.info(f"🔧 Claude model override: {config_overrides.claude_model}")
+                    logger.info("🔧 Claude model override: %s", config_overrides.claude_model)
                 except ValueError as e:
-                    logger.error(f"Invalid claude_model in request: {e}")
+                    logger.error("Invalid claude_model in request: %s", e)
                     raise
 
             if request.max_tokens:
@@ -74,9 +74,9 @@ class InvestigateReposWorkflow:
                     config_overrides.max_tokens = WorkflowConfig.validate_max_tokens(
                         request.max_tokens
                     )
-                    logger.info(f"🔧 Max tokens override: {config_overrides.max_tokens}")
+                    logger.info("🔧 Max tokens override: %s", config_overrides.max_tokens)
                 except ValueError as e:
-                    logger.error(f"Invalid max_tokens in request: {e}")
+                    logger.error("Invalid max_tokens in request: %s", e)
                     raise
 
             if request.sleep_hours:
@@ -84,9 +84,9 @@ class InvestigateReposWorkflow:
                     config_overrides.sleep_hours = WorkflowConfig.validate_sleep_hours(
                         request.sleep_hours
                     )
-                    logger.info(f"🔧 Sleep hours override: {config_overrides.sleep_hours} hours")
+                    logger.info("🔧 Sleep hours override: %s hours", config_overrides.sleep_hours)
                 except ValueError as e:
-                    logger.error(f"Invalid sleep_hours in request: {e}")
+                    logger.error("Invalid sleep_hours in request: %s", e)
                     raise
 
             if request.chunk_size:
@@ -94,9 +94,9 @@ class InvestigateReposWorkflow:
                     config_overrides.chunk_size = WorkflowConfig.validate_chunk_size(
                         request.chunk_size
                     )
-                    logger.info(f"🔧 Chunk size override: {config_overrides.chunk_size} repos")
+                    logger.info("🔧 Chunk size override: %s repos", config_overrides.chunk_size)
                 except ValueError as e:
-                    logger.error(f"Invalid chunk_size in request: {e}")
+                    logger.error("Invalid chunk_size in request: %s", e)
                     raise
 
             if force_first_run and iteration_count == 0:
@@ -105,11 +105,12 @@ class InvestigateReposWorkflow:
                 )
             else:
                 logger.info(
-                    f"Running in normal mode (respects cache) - Iteration {iteration_count}"
+                    "Running in normal mode (respects cache) - Iteration %s", iteration_count
                 )
         else:
             logger.info(
-                f"No request provided, running in normal mode (respects cache) - Iteration {iteration_count}"
+                "No request provided, running in normal mode (respects cache) - Iteration %s",
+                iteration_count,
             )
 
         # Determine if we should force (only on first iteration when force flag is set)
@@ -129,10 +130,10 @@ class InvestigateReposWorkflow:
 
         # Wait before next run (using override or default)
         sleep_hours = config_overrides.sleep_hours or WorkflowConfig.WORKFLOW_SLEEP_HOURS
-        logger.info(f"Investigation complete. Waiting {sleep_hours} hours before next run...")
+        logger.info("Investigation complete. Waiting %s hours before next run...", sleep_hours)
         await workflow.sleep(timedelta(hours=sleep_hours))
         logger.info(
-            f"{sleep_hours} hours elapsed. Continuing as new for next investigation cycle..."
+            "%s hours elapsed. Continuing as new for next investigation cycle...", sleep_hours
         )
 
         # Continue as new with updated state
@@ -180,15 +181,15 @@ class InvestigateReposWorkflow:
         # Check if update was successful
         if update_result.get("status") == "failed":
             logger.warning(
-                f"Failed to update repository list: {update_result.get('error', 'Unknown error')}"
+                "Failed to update repository list: %s", update_result.get("error", "Unknown error")
             )
             logger.info("Continuing with existing repos.json...")
         else:
-            logger.info(f"Repository list updated: {update_result.get('message', 'Success')}")
+            logger.info("Repository list updated: %s", update_result.get("message", "Success"))
             if "total_repos" in update_result:
-                logger.info(f"Update summary: {update_result['total_repos']}")
+                logger.info("Update summary: %s", update_result["total_repos"])
             if "new_repos" in update_result:
-                logger.info(f"New repositories: {update_result['new_repos']}")
+                logger.info("New repositories: %s", update_result["new_repos"])
 
         # Read repos.json using activity (file operations not allowed in workflows)
         repos_data = await workflow.execute_activity(
@@ -204,7 +205,7 @@ class InvestigateReposWorkflow:
 
         # Check for errors in reading repos.json
         if "error" in repos_data:
-            logger.error(f"Failed to read repos.json: {repos_data['error']}")
+            logger.error("Failed to read repos.json: %s", repos_data["error"])
             return InvestigateReposResult(
                 status="failed",
                 total_repos=0,
@@ -238,7 +239,7 @@ class InvestigateReposWorkflow:
                 },
             )
 
-        logger.info(f"Found {len(repositories)} repositories to investigate")
+        logger.info("Found %s repositories to investigate", len(repositories))
 
         if force:
             logger.info(
@@ -259,12 +260,15 @@ class InvestigateReposWorkflow:
                 continue
             repo_url = repo_info.get("url")
             if not repo_url:
-                logger.warning(f"No URL found for repository: {repo_name}")
+                logger.warning("No URL found for repository: %s", repo_name)
                 continue
             valid_repos.append((repo_name, repo_info))
 
         logger.info(
-            f"Processing {len(valid_repos)} repositories in chunks of {window_size} (max {window_size} parallel)"
+            "Processing %s repositories in chunks of %s (max %s parallel)",
+            len(valid_repos),
+            window_size,
+            window_size,
         )
 
         # Track all results as we go
@@ -278,7 +282,9 @@ class InvestigateReposWorkflow:
             chunk_num = chunk_idx // window_size + 1
             total_chunks = (len(valid_repos) + window_size - 1) // window_size
 
-            logger.info(f"Starting chunk {chunk_num}/{total_chunks} with {len(chunk)} repositories")
+            logger.info(
+                "Starting chunk %s/%s with %s repositories", chunk_num, total_chunks, len(chunk)
+            )
 
             # Start all workflows in this chunk
             chunk_handles = []
@@ -289,7 +295,7 @@ class InvestigateReposWorkflow:
                 repo_type = repo_info.get("type", "generic")
 
                 logger.info(
-                    f"Starting investigation for repository: {repo_name} (type: {repo_type})"
+                    "Starting investigation for repository: %s (type: %s)", repo_name, repo_type
                 )
 
                 # Create Pydantic request model
@@ -320,7 +326,9 @@ class InvestigateReposWorkflow:
                 await workflow.sleep(0)
 
             logger.info(
-                f"Chunk {chunk_num}: Started {len(chunk_handles)} workflows, waiting for them to complete..."
+                "Chunk %s: Started %s workflows, waiting for them to complete...",
+                chunk_num,
+                len(chunk_handles),
             )
 
             # Wait for all workflows in this chunk to complete before starting next chunk
@@ -334,22 +342,28 @@ class InvestigateReposWorkflow:
 
                     if result.status == "success":
                         success_count += 1
-                        logger.info(f"Chunk {chunk_num}: ✓ Completed {repo_info['repo_name']}")
+                        logger.info("Chunk %s: ✓ Completed %s", chunk_num, repo_info["repo_name"])
                     elif result.status == "skipped":
                         # Don't count skipped as failed - it's a separate category
                         logger.info(
-                            f"Chunk {chunk_num}: ⊘ Skipped {repo_info['repo_name']} (cached): {result.reason or 'Unknown reason'}"
+                            "Chunk %s: ⊘ Skipped %s (cached): %s",
+                            chunk_num,
+                            repo_info["repo_name"],
+                            result.reason or "Unknown reason",
                         )
                     else:
                         failed_count += 1
                         logger.warning(
-                            f"Chunk {chunk_num}: ✗ Failed {repo_info['repo_name']}: {result.message or 'Unknown error'}"
+                            "Chunk %s: ✗ Failed %s: %s",
+                            chunk_num,
+                            repo_info["repo_name"],
+                            result.message or "Unknown error",
                         )
 
-                except Exception as e:
+                except (RuntimeError, ConnectionError) as e:
                     # Handle exceptions from child workflows
                     logger.error(
-                        f"Chunk {chunk_num}: ✗ Exception for {repo_info['repo_name']}: {e!s}"
+                        "Chunk %s: ✗ Exception for %s: %s", chunk_num, repo_info["repo_name"], e
                     )
                     error_result = InvestigateSingleRepoResult(
                         status="failed",
@@ -365,7 +379,11 @@ class InvestigateReposWorkflow:
                     failed_count += 1
 
             logger.info(
-                f"Chunk {chunk_num}/{total_chunks} completed. Progress: {len(all_results)}/{len(valid_repos)} repos"
+                "Chunk %s/%s completed. Progress: %s/%s repos",
+                chunk_num,
+                total_chunks,
+                len(all_results),
+                len(valid_repos),
             )
 
             # Yield control between chunks
@@ -374,7 +392,7 @@ class InvestigateReposWorkflow:
                 await workflow.sleep(1)
 
         # All results have been collected during chunk processing
-        logger.info(f"All {len(all_results)} investigations completed!")
+        logger.info("All %s investigations completed!", len(all_results))
         results = all_results
 
         # Count how many were skipped
@@ -392,14 +410,18 @@ class InvestigateReposWorkflow:
         )
 
         logger.info(
-            f"Workflow completed. Investigated {len(results)} repositories in parallel. "
-            f"Success: {success_count}, Failed: {failed_count}, Skipped: {skipped_count}"
+            "Workflow completed. Investigated %s repositories in parallel. Success: %s, Failed: %s, Skipped: %s",
+            len(results),
+            success_count,
+            failed_count,
+            skipped_count,
         )
 
         # Only run architecture hub analysis if we have successful investigations (not skipped)
         if success_count > 0:
             logger.info(
-                f"Starting architecture hub analysis child workflow ({len(results) - skipped_count} new investigations)"
+                "Starting architecture hub analysis child workflow (%s new investigations)",
+                len(results) - skipped_count,
             )
 
             try:
@@ -421,19 +443,20 @@ class InvestigateReposWorkflow:
                     "message": "Architecture analysis not implemented yet",
                 }
 
-            except Exception as e:
+            except (RuntimeError, ConnectionError) as e:
                 from investigator.core.config import Config
 
-                logger.error(f"Failed to analyze {Config.ARCH_HUB_REPO_NAME}: {e!s}")
+                logger.error("Failed to analyze %s: %s", Config.ARCH_HUB_REPO_NAME, e)
                 summary.architecture_analysis = {
                     "status": "failed",
                     "error": str(e),
-                    "message": f"Failed to analyze {Config.ARCH_HUB_REPO_NAME}: {e!s}",
+                    "message": f"Failed to analyze {Config.ARCH_HUB_REPO_NAME}: {e}",
                 }
         else:
             if skipped_count == len(results):
                 logger.info(
-                    f"Skipping architecture analysis - all {skipped_count} repositories were skipped (cached)"
+                    "Skipping architecture analysis - all %s repositories were skipped (cached)",
+                    skipped_count,
                 )
                 summary.architecture_analysis = {
                     "status": "skipped",
@@ -443,7 +466,8 @@ class InvestigateReposWorkflow:
                 from investigator.core.config import Config
 
                 logger.info(
-                    f"Skipping architecture analysis - no successful saves to {Config.ARCH_HUB_REPO_NAME}"
+                    "Skipping architecture analysis - no successful saves to %s",
+                    Config.ARCH_HUB_REPO_NAME,
                 )
                 summary.architecture_analysis = {
                     "status": "skipped",

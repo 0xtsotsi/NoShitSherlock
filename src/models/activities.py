@@ -193,7 +193,7 @@ class PromptContextDict(BaseModel):
                 import logging
 
                 logging.warning(
-                    f"Filtered out {len(v) - len(cleaned)} invalid context reference keys"
+                    "Filtered out %s invalid context reference keys", len(v) - len(cleaned)
                 )
             return cleaned
         return v

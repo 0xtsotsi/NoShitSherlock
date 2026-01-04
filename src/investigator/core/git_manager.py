@@ -129,7 +129,7 @@ class GitRepositoryManager:
 
     def _update_repository(self, repo_dir: str, auth_repo_location: str) -> str:
         """Update an existing repository with latest changes."""
-        self.logger.info(f"Repository already exists at: {repo_dir}")
+        self.logger.info("Repository already exists at: %s", repo_dir)
         try:
             import git
 
@@ -148,7 +148,7 @@ class GitRepositoryManager:
             origin.fetch()
             origin.pull()
 
-            self.logger.info(f"Repository successfully updated at: {repo_dir}")
+            self.logger.info("Repository successfully updated at: %s", repo_dir)
             return repo_dir
 
         except Exception as e:
@@ -156,7 +156,7 @@ class GitRepositoryManager:
             import git
 
             if isinstance(e, git.exc.GitCommandError):
-                self.logger.warning(f"Failed to pull latest changes: {e!s}")
+                self.logger.warning("Failed to pull latest changes: {str(e)}")
                 self.logger.info("Falling back to cloning the repository")
                 shutil.rmtree(repo_dir)
                 raise
@@ -172,7 +172,7 @@ class GitRepositoryManager:
 
             # Log sanitized URL without exposing sensitive information
             safe_url = self._sanitize_url_for_logging(repo_location)
-            self.logger.info(f"Cloning repository from: {safe_url}")
+            self.logger.info("Cloning repository from: %s", safe_url)
 
             if self.github_token and self.github_token in repo_location:
                 self.logger.info("Using GitHub token authentication for private repository access")
@@ -186,7 +186,7 @@ class GitRepositoryManager:
             import git
 
             if isinstance(e, git.exc.GitCommandError):
-                self.logger.error(f"Git clone failed: {e!s}")
+                self.logger.error("Git clone failed: {str(e)}")
 
                 # Check if it's a resource issue (exit code -9 or similar)
                 if "exit code(-9)" in str(e) or "Killed" in str(e):
@@ -201,7 +201,7 @@ class GitRepositoryManager:
                     try:
                         return self._minimal_clone_fallback(repo_location, target_dir)
                     except Exception as minimal_error:
-                        self.logger.error(f"Minimal clone also failed: {minimal_error!s}")
+                        self.logger.error("Minimal clone also failed: %s", minimal_error)
                         raise Exception(
                             f"Failed to clone repository even with minimal clone: {minimal_error!s}"
                         ) from minimal_error
@@ -259,14 +259,14 @@ class GitRepositoryManager:
         safe_url = self._sanitize_url_for_logging(repo_location)
         if repo_location in log_cmd:
             log_cmd = log_cmd.replace(repo_location, safe_url)
-        self.logger.debug(f"Shallow clone command: {log_cmd}")
+        self.logger.debug("Shallow clone command: %s", log_cmd)
 
         try:
             subprocess.run(
                 cmd, capture_output=True, text=True, timeout=600, check=True  # 10 minute timeout
             )
 
-            self.logger.info(f"Repository successfully shallow cloned to: {target_dir}")
+            self.logger.info("Repository successfully shallow cloned to: %s", target_dir)
             return target_dir
 
         except subprocess.CalledProcessError as e:
@@ -309,7 +309,7 @@ class GitRepositoryManager:
 
             # Add remote (don't log the URL with potential token)
             safe_url = self._sanitize_url_for_logging(repo_location)
-            self.logger.debug(f"Adding remote origin: {safe_url}")
+            self.logger.debug("Adding remote origin: %s", safe_url)
             subprocess.run(
                 ["git", "remote", "add", "origin", repo_location], cwd=target_dir, check=True
             )
@@ -393,7 +393,7 @@ class GitRepositoryManager:
 
                     # Log current remote URL (sanitized)
                     safe_url = self._sanitize_url_for_logging(current_url)
-                    self.logger.info(f"Current remote URL: {safe_url}")
+                    self.logger.info("Current remote URL: %s", safe_url)
 
                     # Add authentication if not already present
                     if "github.com" in current_url and "@" not in current_url:
@@ -437,7 +437,7 @@ class GitRepositoryManager:
                     "stderr": error_msg,
                 }
 
-            self.logger.info(f"Successfully pushed changes to {branch}")
+            self.logger.info("Successfully pushed changes to %s", branch)
             return {
                 "status": "success",
                 "message": f"Successfully pushed changes to {branch}",
@@ -512,11 +512,11 @@ class GitRepositoryManager:
             subprocess.run(["git", "config", "user.name", user_name], cwd=repo_dir, check=True)
             subprocess.run(["git", "config", "user.email", user_email], cwd=repo_dir, check=True)
 
-            self.logger.info(f"Git configured with user: {user_name} <{user_email}>")
+            self.logger.info("Git configured with user: %s <%s>", user_email, user_name)
             return True
 
-        except Exception as e:
-            self.logger.error(f"Failed to configure git user: {e!s}")
+        except Exception:
+            self.logger.error("Failed to configure git user: {str(e)}")
             return False
 
     def check_repository_permissions(self, repo_url: str) -> dict:
@@ -611,6 +611,6 @@ class GitRepositoryManager:
     def _ensure_clean_directory(self, directory: str):
         """Ensure a directory is clean and ready for use."""
         if os.path.exists(directory):
-            self.logger.info(f"Cleaning up existing directory: {directory}")
+            self.logger.info("Cleaning up existing directory: %s", directory)
             shutil.rmtree(directory)
         os.makedirs(directory, exist_ok=True)

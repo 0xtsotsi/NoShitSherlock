@@ -42,7 +42,7 @@ def main():
         print(f"\nAnalyzing repository: {repo_url}")
         arch_file = investigate_repo(repo_url, log_level="INFO")
         print(f"✓ Analysis complete! Results saved to: {arch_file}")
-    except Exception as e:
+    except (ValueError, RuntimeError, OSError) as e:
         print(f"✗ Error: {e}")
         if "Authentication failed" in str(e) and github_token:
             print("\nTroubleshooting tips:")
@@ -67,7 +67,7 @@ def main():
 
         print("✓ Investigator instance created successfully")
 
-    except Exception as e:
+    except (ValueError, ImportError) as e:
         print(f"✗ Error creating investigator: {e}")
         sys.exit(1)
 

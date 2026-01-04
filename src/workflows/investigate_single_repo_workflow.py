@@ -89,7 +89,7 @@ class InvestigateSingleRepoWorkflow:
             logger.error(error_msg)
             raise Exception(error_msg)
 
-        logger.info(f"DynamoDB health check passed: {health_check_result.get('message')}")
+        logger.info("DynamoDB health check passed: %s", health_check_result.get("message"))
 
     async def _clone_repository(self, repo_url: str, repo_name: str) -> CloneRepositoryResult:
         """Clone the repository and return clone results."""
@@ -123,11 +123,11 @@ class InvestigateSingleRepoWorkflow:
         prompt_versions: dict[str, str] | None = None,
     ) -> CacheCheckResult:
         """Check if repository needs investigation using DynamoDB cache."""
-        workflow.logger.info(f"🔍 WORKFLOW: Starting cache check for {repo_name}")
-        workflow.logger.info(f"   repo_url: {repo_url}")
-        workflow.logger.info(f"   repo_path: {repo_path}")
+        workflow.logger.info("🔍 WORKFLOW: Starting cache check for %s", repo_name)
+        workflow.logger.info("   repo_url: %s", repo_url)
+        workflow.logger.info("   repo_path: %s", repo_path)
         if prompt_versions:
-            workflow.logger.info(f"   prompt_versions: {len(prompt_versions)} prompts provided")
+            workflow.logger.info("   prompt_versions: %s prompts provided", len(prompt_versions))
         else:
             workflow.logger.warning("   ⚠️  NO PROMPT VERSIONS provided to cache check")
 
@@ -154,10 +154,11 @@ class InvestigateSingleRepoWorkflow:
         )
 
         workflow.logger.info(
-            f"🎯 WORKFLOW: Cache check result: needs_investigation={cache_check_result.needs_investigation}"
+            "🎯 WORKFLOW: Cache check result: needs_investigation=%s",
+            cache_check_result.needs_investigation,
         )
-        workflow.logger.info(f"   reason: {cache_check_result.reason}")
-        workflow.logger.info(f"   latest_commit: {cache_check_result.latest_commit or 'None'}")
+        workflow.logger.info("   reason: %s", cache_check_result.reason)
+        workflow.logger.info("   latest_commit: %s", cache_check_result.latest_commit or "None")
 
         return cache_check_result
 
@@ -209,7 +210,7 @@ class InvestigateSingleRepoWorkflow:
         self._status = "reading_dependencies"
         self._last_heartbeat = workflow.now()
 
-        logger.info(f"Reading and caching dependencies for repository at: {repo_path}")
+        logger.info("Reading and caching dependencies for repository at: %s", repo_path)
 
         # Read and format dependencies
         deps_data = await workflow.execute_activity(
@@ -225,14 +226,14 @@ class InvestigateSingleRepoWorkflow:
 
         if deps_data["status"] != "success":
             logger.warning(
-                f"Failed to read dependencies: {deps_data.get('message', 'Unknown error')}"
+                "Failed to read dependencies: %s", deps_data.get("message", "Unknown error")
             )
             return {
                 "deps_reference_key": None,
                 "formatted_content": "Error reading dependency files!",
             }
 
-        logger.info(f"Dependencies read successfully: {deps_data['message']}")
+        logger.info("Dependencies read successfully: %s", deps_data["message"])
 
         # Cache the dependencies data if we found any
         if deps_data["raw_dependencies"]:
@@ -246,21 +247,15 @@ class InvestigateSingleRepoWorkflow:
                     maximum_interval=timedelta(seconds=10),
                 ),
             )
+            logger.info(
+                "Dependencies cached successfully with key: %s", cache_result["deps_reference_key"]
+            )
+            return {
+                "deps_reference_key": cache_result["deps_reference_key"],
+                "formatted_content": deps_data["formatted_content"],
+            }
 
-            if cache_result["status"] == "success":
-                logger.info(
-                    f"Dependencies cached successfully with key: {cache_result['deps_reference_key']}"
-                )
-                return {
-                    "deps_reference_key": cache_result["deps_reference_key"],
-                    "formatted_content": deps_data["formatted_content"],
-                }
-            else:
-                logger.warning(
-                    f"Failed to cache dependencies: {cache_result.get('error', 'Unknown error')}"
-                )
-
-        # Return formatted content even if caching failed or no dependencies found
+        # Return formatted content if no dependencies found
         return {"deps_reference_key": None, "formatted_content": deps_data["formatted_content"]}
 
     async def _process_analysis_steps(
@@ -288,7 +283,7 @@ class InvestigateSingleRepoWorkflow:
             with open(base_prompts_path) as f:
                 base_prompts_config = json.load(f)
         except Exception as e:
-            logger.warning(f"Could not load base prompts config: {e}")
+            logger.warning("Could not load base prompts config: %s", e)
             base_prompts_config = None
 
         results_collector = AnalysisResultsCollector(self._repo_name, base_prompts_config)
@@ -305,7 +300,7 @@ class InvestigateSingleRepoWorkflow:
             description = step.get("description", "")
             context_config = step.get("context", None)
 
-            logger.info(f"Processing step: {step_name} - {description}")
+            logger.info("Processing step: %s - %s", step_name, description)
 
             # Read the prompt file
             prompt_result = await workflow.execute_activity(
@@ -321,10 +316,10 @@ class InvestigateSingleRepoWorkflow:
 
             if prompt_result["status"] == "not_found":
                 if is_required:
-                    logger.error(f"Required prompt file not found: {file_name}")
+                    logger.error("Required prompt file not found: %s", file_name)
                     raise Exception(f"Required prompt file not found: {file_name}")
                 else:
-                    logger.warning(f"Optional prompt file not found, skipping: {file_name}")
+                    logger.warning("Optional prompt file not found, skipping: %s", file_name)
                     continue
 
             prompt_content = prompt_result["prompt_content"]
@@ -351,14 +346,16 @@ class InvestigateSingleRepoWorkflow:
                         result_key = step_results[step_ref]
                         # Only add non-None result keys
                         if result_key is not None:
-                            context_dict["context_reference_keys"].append(result_key)
+                            logger.warning(
+                                "Step %s has None result key, skipping from context", step_ref
+                            )
                         else:
                             logger.warning(
-                                f"Step {step_ref} has None result key, skipping from context"
+                                "Step %s has None result key, skipping from context", step_ref
                             )
 
             # Save prompt data to DynamoDB using PromptContext
-            logger.info(f"Saving prompt data for step: {step_name}")
+            logger.info("Saving prompt data for step: %s", step_name)
             save_result = await workflow.execute_activity(
                 save_prompt_context_activity,
                 args=[context_dict, prompt_content, repo_structure, deps_formatted_content],
@@ -377,7 +374,7 @@ class InvestigateSingleRepoWorkflow:
             updated_context = save_result["context"]
 
             # Execute Claude analysis using PromptContext with prompt-level caching
-            logger.info(f"Calling Claude for step: {step_name}")
+            logger.info("Calling Claude for step: %s", step_name)
             # Get latest_commit from workflow state (passed from parent)
             latest_commit = getattr(self, "_latest_commit", None)
 
@@ -404,13 +401,18 @@ class InvestigateSingleRepoWorkflow:
                 ),
             )
 
-            if claude_result.status != "success":
-                raise Exception(f"Claude analysis failed for step {step_name}")
+            logger.info(
+                "✅ Used cached result for step %s: %s",
+                step_name,
+                claude_result.cache_reason or "Unknown reason",
+            )
 
             # Log if result was from cache
             if claude_result.cached:
                 logger.info(
-                    f"✅ Used cached result for step {step_name}: {claude_result.cache_reason or 'Unknown reason'}"
+                    "✅ Used cached result for step %s: %s",
+                    step_name,
+                    claude_result.cache_reason or "Unknown reason",
                 )
                 cached_steps += 1
 
@@ -442,10 +444,10 @@ class InvestigateSingleRepoWorkflow:
                 ],
             )
 
-            logger.info(f"Step {step_name} completed with result key: {result_key}")
+            logger.info("Step %s completed with result key: %s", step_name, result_key)
 
         # Retrieve all results from DynamoDB for final processing
-        logger.info(f"Retrieving all {len(step_results)} results from DynamoDB")
+        logger.info("Retrieving all %s results from DynamoDB", len(step_results))
 
         manager_dict = {"repo_name": self._repo_name, "step_results": step_results}
 
@@ -468,7 +470,7 @@ class InvestigateSingleRepoWorkflow:
         # Validate that all base sections are present
         is_valid, missing_sections = results_collector.validate_base_sections_present()
         if not is_valid:
-            logger.warning(f"Missing base sections: {missing_sections}")
+            logger.warning("Missing base sections: %s", missing_sections)
             # Log but don't fail - some repos might not have all sections
 
         # Use the collector to combine results in the correct order
@@ -476,7 +478,7 @@ class InvestigateSingleRepoWorkflow:
 
         # Get statistics for logging
         stats = results_collector.get_statistics()
-        logger.info(f"Results collection statistics: {stats}")
+        logger.info("Results collection statistics: %s", stats)
 
         # Note: Cleanup is handled automatically by TTL in DynamoDB
         # We could add explicit cleanup here if needed
@@ -489,7 +491,7 @@ class InvestigateSingleRepoWorkflow:
         )
 
     async def _write_analysis_results(
-        self, temp_dir: str, repo_path: str, final_analysis: str
+        self, repo_path: str, final_analysis: str
     ) -> WriteResultsOutput:
         """Write final analysis to file."""
         self._status = "writing_results"
@@ -497,7 +499,7 @@ class InvestigateSingleRepoWorkflow:
 
         write_result = await workflow.execute_activity(
             write_analysis_result_activity,
-            args=[temp_dir, repo_path, final_analysis],
+            args=[repo_path, final_analysis],
             start_to_close_timeout=timedelta(minutes=5),
             retry_policy=RetryPolicy(
                 maximum_attempts=2,
@@ -528,7 +530,7 @@ class InvestigateSingleRepoWorkflow:
         from investigator.core.config import Config
 
         logger.info(
-            f"Investigation successful for {repo_name}, saving to {Config.ARCH_HUB_REPO_NAME}"
+            "Investigation successful for %s, saving to %s", repo_name, Config.ARCH_HUB_REPO_NAME
         )
         self._status = "saving_to_hub"
         self._last_heartbeat = workflow.now()
@@ -557,7 +559,9 @@ class InvestigateSingleRepoWorkflow:
             )
 
             logger.info(
-                f"Architecture hub save result for {repo_name}: {hub_result.get('message', 'Unknown')}"
+                "Architecture hub save result for %s: %s",
+                repo_name,
+                hub_result.get("message", "Unknown"),
             )
 
             return SaveToHubResult(
@@ -567,7 +571,7 @@ class InvestigateSingleRepoWorkflow:
             )
 
         except Exception as e:
-            logger.error(f"Failed to save {repo_name} to {Config.ARCH_HUB_REPO_NAME}: {e!s}")
+            logger.error("Failed to save %s to %s: %s", repo_name, Config.ARCH_HUB_REPO_NAME, e)
             return SaveToHubResult(
                 status="failed",
                 message=f"Failed to save to {Config.ARCH_HUB_REPO_NAME}: {e!s}",
@@ -601,7 +605,7 @@ class InvestigateSingleRepoWorkflow:
         Returns:
             SaveToDynamoResult with metadata save status
         """
-        logger.info(f"Saving investigation metadata to DynamoDB for {repo_name}")
+        logger.info("Saving investigation metadata to DynamoDB for %s", repo_name)
         self._status = "saving_metadata"
         self._last_heartbeat = workflow.now()
 
@@ -637,7 +641,9 @@ class InvestigateSingleRepoWorkflow:
                 ),
             )
 
-            logger.info(f"DynamoDB metadata save result for {repo_name}: {metadata_result.message}")
+            logger.info(
+                "DynamoDB metadata save result for %s: %s", repo_name, metadata_result.message
+            )
 
             return SaveToDynamoResult(
                 status=metadata_result.status,
@@ -647,7 +653,7 @@ class InvestigateSingleRepoWorkflow:
             )
 
         except Exception as e:
-            logger.error(f"Failed to save metadata to DynamoDB for {repo_name}: {e!s}")
+            logger.error("Failed to save metadata to DynamoDB for %s: %s", repo_name, e)
             return SaveToDynamoResult(
                 status="failed",
                 message=f"Failed to save metadata: {e!s}",
@@ -673,16 +679,13 @@ class InvestigateSingleRepoWorkflow:
         force = request.force
         config_overrides = request.config_overrides or ConfigOverrides()
 
-        # Initialize workflow state
-        self._repo_name = repo_name
-        self._status = "started"
-        self._last_heartbeat = workflow.now()
+        self._repo_name = repo_name  # Set instance variable for use in activities
         self._latest_commit = None  # Will be set after cache check
 
-        logger.info(f"Starting investigation for repository: {repo_name} (type: {repo_type})")
+        logger.info("Starting investigation for repository: %s (type: %s)", repo_name, repo_type)
         if force:
             logger.info(
-                f"⚡ Force mode enabled for {repo_name} - will investigate regardless of cache"
+                "⚡ Force mode enabled for %s - will investigate regardless of cache", repo_name
             )
 
         # Step 0: DynamoDB Health Check
@@ -698,7 +701,7 @@ class InvestigateSingleRepoWorkflow:
         early_prompts_result = await self._get_prompts_config(repo_path, repo_type, repo_url)
         prompt_versions = early_prompts_result.prompt_versions
         logger.info(
-            f"📝 WORKFLOW: Extracted {len(prompt_versions)} prompt versions for cache check"
+            "📝 WORKFLOW: Extracted %s prompt versions for cache check", len(prompt_versions)
         )
 
         # Step 2: Check if repository needs investigation (using DynamoDB cache)
@@ -711,26 +714,29 @@ class InvestigateSingleRepoWorkflow:
         self._latest_commit = latest_commit  # Store for prompt-level caching
 
         if force:
-            logger.info(f"Skipping cache check for {repo_name} due to force flag")
+            logger.info("Skipping cache check for %s due to force flag", repo_name)
             needs_investigation = True
             cache_reason = "Force flag enabled"
         else:
             needs_investigation = cache_check_result.needs_investigation
             cache_reason = cache_check_result.reason
             logger.info(
-                f"🎯 WORKFLOW: Cache check for {repo_name}: needs_investigation={needs_investigation}, reason={cache_reason}"
+                "🎯 WORKFLOW: Cache check for %s: needs_investigation=%s, reason=%s",
+                repo_name,
+                needs_investigation,
+                cache_reason,
             )
         # If repository doesn't need investigation, return early with cached info
         if not needs_investigation:
-            logger.info(f"⏭️  WORKFLOW: Skipping investigation for {repo_name}: {cache_reason}")
-            logger.info(f"🎯 FINAL DECISION: Repository {repo_name} will be SKIPPED")
+            logger.info("⏭️  WORKFLOW: Skipping investigation for %s: %s", repo_name, cache_reason)
+            logger.info("🎯 FINAL DECISION: Repository %s will be SKIPPED", repo_name)
 
             # Get the last investigation data if available
             last_investigation = cache_check_result.last_investigation or {}
 
             # Clean up the cloned repository since we're not investigating
             try:
-                logger.info(f"Cleaning up cloned repository for skipped repo {repo_name}")
+                logger.info("Cleaning up cloned repository for skipped repo %s", repo_name)
                 cleanup_result = await workflow.execute_activity(
                     cleanup_repository_activity,
                     args=[repo_path, temp_dir],
@@ -741,10 +747,12 @@ class InvestigateSingleRepoWorkflow:
                     ),
                 )
                 logger.info(
-                    f"Cleanup result for skipped repo {repo_name}: {cleanup_result.get('message', 'Unknown')}"
+                    "Cleanup result for skipped repo %s: %s",
+                    repo_name,
+                    cleanup_result.get("message", "Unknown"),
                 )
             except Exception as e:
-                logger.warning(f"Failed to clean up skipped repository {repo_name}: {e!s}")
+                logger.warning("Failed to clean up skipped repository %s: %s", repo_name, e)
                 # Don't fail the workflow due to cleanup issues
 
             return InvestigateSingleRepoResult(
@@ -762,8 +770,8 @@ class InvestigateSingleRepoWorkflow:
             )
 
         # Repository needs investigation - proceed with full analysis
-        logger.info(f"🚀 WORKFLOW: Proceeding with full investigation for {repo_name}")
-        logger.info(f"🎯 FINAL DECISION: Repository {repo_name} will be INVESTIGATED")
+        logger.info("🚀 WORKFLOW: Proceeding with full investigation for %s", repo_name)
+        logger.info("🎯 FINAL DECISION: Repository %s will be INVESTIGATED", repo_name)
 
         # Step 3: Analyze repository structure
         structure_result = await self._analyze_repository_structure(repo_path)
@@ -802,7 +810,7 @@ class InvestigateSingleRepoWorkflow:
         final_analysis = results_collector_final.generate_final_analysis(all_results)
 
         # Step 7: Write final analysis to file
-        write_result = await self._write_analysis_results(temp_dir, repo_path, final_analysis)
+        write_result = await self._write_analysis_results(repo_path, final_analysis)
         arch_file_path = write_result.arch_file_path
 
         investigation_result = InvestigationResult(
@@ -839,7 +847,8 @@ class InvestigateSingleRepoWorkflow:
                 raise Exception(error_msg)
         else:
             logger.info(
-                f"Skipping architecture hub save for {repo_name} - investigation not successful or no content"
+                "Skipping architecture hub save for %s - investigation not successful or no content",
+                repo_name,
             )
             investigation_result.architecture_hub = {
                 "status": "skipped",
@@ -874,7 +883,7 @@ class InvestigateSingleRepoWorkflow:
         # Step 10: Clean up the cloned repository to save space
         cleanup = {}
         try:
-            logger.info(f"Cleaning up cloned repository for {repo_name}")
+            logger.info("Cleaning up cloned repository for %s", repo_name)
             cleanup_result = await workflow.execute_activity(
                 cleanup_repository_activity,
                 args=[repo_path, temp_dir],
@@ -885,11 +894,11 @@ class InvestigateSingleRepoWorkflow:
                 ),
             )
             logger.info(
-                f"Cleanup result for {repo_name}: {cleanup_result.get('message', 'Unknown')}"
+                "Cleanup result for %s: %s", repo_name, cleanup_result.get("message", "Unknown")
             )
             cleanup = cleanup_result
         except Exception as e:
-            logger.warning(f"Failed to clean up repository {repo_name}: {e!s}")
+            logger.warning("Failed to clean up repository %s: %s", repo_name, e)
             # Don't fail the workflow due to cleanup issues
             cleanup = {"status": "failed", "error": str(e), "message": f"Cleanup failed: {e!s}"}
 

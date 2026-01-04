@@ -52,9 +52,9 @@ async def check_dynamodb_health() -> dict:
         activity.logger.info(
             f"  PROMPT_CONTEXT_STORAGE: {os.environ.get('PROMPT_CONTEXT_STORAGE')}"
         )
-        activity.logger.info(f"  SKIP_DYNAMODB_CHECK: {os.environ.get('SKIP_DYNAMODB_CHECK')}")
-        activity.logger.info(f"  LOCAL_TESTING: {os.environ.get('LOCAL_TESTING')}")
-        activity.logger.info(f"  TEMPORAL_SERVER_URL: {temporal_server}")
+        activity.logger.info("  SKIP_DYNAMODB_CHECK: %s", os.environ.get("SKIP_DYNAMODB_CHECK"))
+        activity.logger.info("  LOCAL_TESTING: %s", os.environ.get("LOCAL_TESTING"))
+        activity.logger.info("  TEMPORAL_SERVER_URL: %s", temporal_server)
         activity.logger.info("  Running in local mode - DynamoDB operations will use file storage")
 
         return {
@@ -79,7 +79,7 @@ async def check_dynamodb_health() -> dict:
         test_repo_name = f"__health_check_{current_timestamp}_{unique_id}"
         test_timestamp = current_timestamp
 
-        activity.logger.info(f"Health check using test key: {test_repo_name}")
+        activity.logger.info("Health check using test key: %s", test_repo_name)
 
         # Step 1: Write test item
         activity.logger.info("Testing DynamoDB write operation...")
@@ -148,7 +148,7 @@ async def check_dynamodb_health() -> dict:
         }
 
     except ImportError as e:
-        activity.logger.error(f"Failed to import DynamoDB client: {e}")
+        activity.logger.error("Failed to import DynamoDB client: %s", e)
         return {
             "status": "unhealthy",
             "message": f"DynamoDB client import failed: {e!s}",
@@ -156,7 +156,7 @@ async def check_dynamodb_health() -> dict:
         }
 
     except Exception as e:
-        activity.logger.error(f"DynamoDB health check failed: {e}")
+        activity.logger.error("DynamoDB health check failed: %s", e)
 
         # Try to clean up test item if it exists
         try:
@@ -211,11 +211,11 @@ async def cleanup_old_health_checks() -> dict:
                     }
                 )
                 items_deleted += 1
-                activity.logger.info(f"Deleted old health check item: {item['repository_name']}")
+                activity.logger.info("Deleted old health check item: %s", item["repository_name"])
             except Exception as e:
-                activity.logger.warning(f"Failed to delete health check item: {e}")
+                activity.logger.warning("Failed to delete health check item: %s", e)
 
-        activity.logger.info(f"Cleanup completed - deleted {items_deleted} old health check items")
+        activity.logger.info("Cleanup completed - deleted %s old health check items", items_deleted)
 
         return {
             "status": "success",
@@ -224,5 +224,5 @@ async def cleanup_old_health_checks() -> dict:
         }
 
     except Exception as e:
-        activity.logger.error(f"Health check cleanup failed: {e}")
+        activity.logger.error("Health check cleanup failed: %s", e)
         return {"status": "failed", "message": f"Cleanup failed: {e!s}", "items_deleted": 0}

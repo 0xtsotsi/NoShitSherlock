@@ -47,7 +47,7 @@ class DynamoDBPromptContext(PromptContextBase):
         # Generate unique reference key
         self.data_reference_key = f"{self.repo_name}_{self.step_name}_{str(uuid.uuid4())[:8]}"
 
-        logger.info(f"Saving prompt data to DynamoDB with key: {self.data_reference_key}")
+        logger.info("Saving prompt data to DynamoDB with key: %s", self.data_reference_key)
 
         # Save to DynamoDB
         result = self._dynamodb_client.save_temporary_analysis_data(
@@ -73,7 +73,7 @@ class DynamoDBPromptContext(PromptContextBase):
         if not self.data_reference_key:
             raise ValueError("No data reference key set. Call save_prompt_data first.")
 
-        logger.info(f"Retrieving prompt data from DynamoDB with key: {self.data_reference_key}")
+        logger.info("Retrieving prompt data from DynamoDB with key: %s", self.data_reference_key)
 
         # Get main prompt data
         temp_data = self._dynamodb_client.get_temporary_analysis_data(self.data_reference_key)
@@ -86,7 +86,7 @@ class DynamoDBPromptContext(PromptContextBase):
         # Build context from reference keys
         context = None
         if self.context_reference_keys:
-            logger.info(f"Building context from {len(self.context_reference_keys)} references")
+            logger.info("Building context from %s references", len(self.context_reference_keys))
             context_parts = []
 
             for context_key in self.context_reference_keys:
@@ -97,7 +97,7 @@ class DynamoDBPromptContext(PromptContextBase):
                     step_name = parts[1] if len(parts) > 1 else context_key
                     context_parts.append(f"## {step_name}\n\n{result}")
                 else:
-                    logger.warning(f"No result found for context key: {context_key}")
+                    logger.warning("No result found for context key: %s", context_key)
 
             if context_parts:
                 context = "\n\n".join(context_parts)
@@ -124,7 +124,7 @@ class DynamoDBPromptContext(PromptContextBase):
             f"{self.repo_name}_{self.step_name}_result_{str(uuid.uuid4())[:8]}"
         )
 
-        logger.info(f"Saving result to DynamoDB with key: {self.result_reference_key}")
+        logger.info("Saving result to DynamoDB with key: %s", self.result_reference_key)
 
         # Save to DynamoDB
         save_result = self._dynamodb_client.save_analysis_result(
@@ -168,9 +168,9 @@ class DynamoDBPromptContext(PromptContextBase):
         for key in keys_to_cleanup:
             try:
                 self._dynamodb_client.delete_temporary_analysis_data(key)
-                logger.info(f"Cleaned up from DynamoDB: {key}")
-            except Exception as e:
-                logger.warning(f"Failed to cleanup {key} from DynamoDB: {e!s}")
+                logger.info("Cleaned up from DynamoDB: %s", key)
+            except Exception:
+                logger.warning("Failed to cleanup %s from DynamoDB: {str(e)}", key)
 
 
 class DynamoDBPromptContextManager(PromptContextManagerBase):
@@ -224,6 +224,6 @@ class DynamoDBPromptContextManager(PromptContextManagerBase):
             if content:
                 results[step_name] = content
             else:
-                logger.warning(f"No content found in DynamoDB for step {step_name}")
+                logger.warning("No content found in DynamoDB for step %s", step_name)
 
         return results

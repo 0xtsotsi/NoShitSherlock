@@ -46,7 +46,7 @@ class FileBasedPromptContext(PromptContextBase):
 
         self._storage_dir = base_dir / self.repo_name
         self._storage_dir.mkdir(parents=True, exist_ok=True)
-        logger.info(f"Using file storage at: {self._storage_dir}")
+        logger.info("Using file storage at: %s", self._storage_dir)
 
     def _get_file_path(self, key: str) -> Path:
         """Get the file path for a given key."""
@@ -78,7 +78,7 @@ class FileBasedPromptContext(PromptContextBase):
         )
         self.data_reference_key = key_obj.to_storage_key()
 
-        logger.info(f"Saving prompt data to file with key: {self.data_reference_key}")
+        logger.info("Saving prompt data to file with key: %s", self.data_reference_key)
 
         # Save to file using file-safe key
         data = {
@@ -92,7 +92,7 @@ class FileBasedPromptContext(PromptContextBase):
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
 
-        logger.info(f"Saved prompt data to: {file_path}")
+        logger.info("Saved prompt data to: %s", file_path)
         return self.data_reference_key
 
     def get_prompt_and_context(self) -> dict[str, Any]:
@@ -105,7 +105,7 @@ class FileBasedPromptContext(PromptContextBase):
         if not self.data_reference_key:
             raise ValueError("No data reference key set. Call save_prompt_data first.")
 
-        logger.info(f"Retrieving prompt data from file with key: {self.data_reference_key}")
+        logger.info("Retrieving prompt data from file with key: %s", self.data_reference_key)
 
         # Get main prompt data
         file_path = self._get_file_path(self.data_reference_key)
@@ -121,7 +121,7 @@ class FileBasedPromptContext(PromptContextBase):
         # Build context from reference keys
         context = None
         if self.context_reference_keys:
-            logger.info(f"Building context from {len(self.context_reference_keys)} references")
+            logger.info("Building context from %s references", len(self.context_reference_keys))
             context_parts = []
 
             for context_key in self.context_reference_keys:
@@ -136,7 +136,7 @@ class FileBasedPromptContext(PromptContextBase):
                             step_name = parts[1] if len(parts) > 1 else context_key
                             context_parts.append(f"## {step_name}\n\n{result}")
                 else:
-                    logger.warning(f"No result file found for context key: {context_key}")
+                    logger.warning("No result file found for context key: %s", context_key)
 
             if context_parts:
                 context = "\n\n".join(context_parts)
@@ -160,7 +160,7 @@ class FileBasedPromptContext(PromptContextBase):
 
         file_path = self._get_file_path(self.result_reference_key)
         if not file_path.exists():
-            logger.warning(f"No result file found for key: {self.result_reference_key}")
+            logger.warning("No result file found for key: %s", self.result_reference_key)
             return None
 
         with open(file_path, encoding="utf-8") as f:
@@ -184,18 +184,18 @@ class FileBasedPromptContext(PromptContextBase):
             try:
                 if file_path.exists():
                     file_path.unlink()
-                    logger.info(f"Cleaned up file: {file_path}")
-            except Exception as e:
-                logger.warning(f"Failed to cleanup {file_path}: {e!s}")
+                    logger.info("Cleaned up file: %s", file_path)
+            except Exception:
+                logger.warning("Failed to cleanup %s: {str(e)}", file_path)
 
         # Clean up directory if empty
         if self._storage_dir is not None:
             try:
                 if self._storage_dir.exists() and not any(self._storage_dir.iterdir()):
                     self._storage_dir.rmdir()
-                    logger.info(f"Removed empty directory: {self._storage_dir}")
-            except Exception as e:
-                logger.warning(f"Failed to cleanup directory: {e!s}")
+                    logger.info("Removed empty directory: %s", self._storage_dir)
+            except Exception:
+                logger.warning("Failed to cleanup directory: {str(e)}")
 
 
 class FileBasedPromptContextManager(PromptContextManagerBase):
@@ -279,9 +279,9 @@ class FileBasedPromptContextManager(PromptContextManagerBase):
                     if content:
                         results[step_name] = content
                     else:
-                        logger.warning(f"No content in file for step {step_name}")
+                        logger.warning("No content in file for step %s", step_name)
             else:
-                logger.warning(f"No result file found for step {step_name}: {file_path}")
+                logger.warning("No result file found for step %s: %s", file_path, step_name)
 
         return results
 
@@ -293,9 +293,9 @@ class FileBasedPromptContextManager(PromptContextManagerBase):
         try:
             if self._storage_dir.exists():
                 shutil.rmtree(self._storage_dir)
-                logger.info(f"Cleaned up storage directory: {self._storage_dir}")
-        except Exception as e:
-            logger.warning(f"Failed to cleanup storage directory: {e!s}")
+                logger.info("Cleaned up storage directory: %s", self._storage_dir)
+        except Exception:
+            logger.warning("Failed to cleanup storage directory: {str(e)}")
 
     def save_analysis_result(
         self,
@@ -334,7 +334,7 @@ class FileBasedPromptContextManager(PromptContextManagerBase):
             with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
 
-            logger.info(f"Saved analysis result to: {file_path}")
+            logger.info("Saved analysis result to: %s", file_path)
 
             return {
                 "status": "success",
@@ -342,7 +342,7 @@ class FileBasedPromptContextManager(PromptContextManagerBase):
                 "timestamp": data["timestamp"],
             }
         except Exception as e:
-            logger.error(f"Failed to save analysis result: {e!s}")
+            logger.error("Failed to save analysis result: {str(e)}")
             return {"status": "error", "message": str(e)}
 
     def get_analysis_result(self, reference_key: str) -> str | None:
@@ -367,10 +367,10 @@ class FileBasedPromptContextManager(PromptContextManagerBase):
                     result = data.get("result_content")
                     return result if isinstance(result, str) else None
             else:
-                logger.debug(f"No result file found for key: {reference_key}")
+                logger.debug("No result file found for key: %s", reference_key)
                 return None
-        except Exception as e:
-            logger.error(f"Failed to retrieve analysis result: {e!s}")
+        except Exception:
+            logger.error("Failed to retrieve analysis result: {str(e)}")
             return None
 
     def save_investigation_metadata(
@@ -428,11 +428,11 @@ class FileBasedPromptContextManager(PromptContextManagerBase):
             with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(metadata, f, indent=2)
 
-            logger.info(f"Saved investigation metadata to: {file_path}")
+            logger.info("Saved investigation metadata to: %s", file_path)
 
             return metadata
-        except Exception as e:
-            logger.error(f"Failed to save investigation metadata: {e!s}")
+        except Exception:
+            logger.error("Failed to save investigation metadata: {str(e)}")
             raise
 
     def get_latest_investigation(self, repository_name: str) -> dict[str, Any] | None:
@@ -458,8 +458,8 @@ class FileBasedPromptContextManager(PromptContextManagerBase):
                     data = json.load(f)
                     return data if isinstance(data, dict) else None
             else:
-                logger.debug(f"No investigation metadata found for: {repository_name}")
+                logger.debug("No investigation metadata found for: %s", repository_name)
                 return None
-        except Exception as e:
-            logger.error(f"Failed to retrieve investigation metadata: {e!s}")
+        except Exception:
+            logger.error("Failed to retrieve investigation metadata: {str(e)}")
             return None

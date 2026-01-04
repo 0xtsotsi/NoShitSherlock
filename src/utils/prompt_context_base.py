@@ -95,7 +95,7 @@ class PromptContextBase(ABC):
         """
         if reference_key and reference_key not in self.context_reference_keys:
             self.context_reference_keys.append(reference_key)
-            logger.debug(f"Added context reference: {reference_key}")
+            logger.debug("Added context reference: %s", reference_key)
 
     def add_context_from_steps(self, step_names: list[str], step_results: dict[str, str]):
         """
@@ -109,7 +109,7 @@ class PromptContextBase(ABC):
             if step_name in step_results:
                 self.add_context_reference(step_results[step_name])
             else:
-                logger.warning(f"Step {step_name} not found in results for context")
+                logger.warning("Step %s not found in results for context", step_name)
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -198,7 +198,7 @@ class PromptContextManagerBase(ABC):
         self.repo_name = repo_name
         self.contexts: dict[str, PromptContextBase] = {}
         self.step_results: dict[str, str] = {}  # Maps step names to result keys
-        logger.info(f"Initialized {self.__class__.__name__} for {repo_name}")
+        logger.info("Initialized %s for %s", self.__class__.__name__, repo_name)
 
     @abstractmethod
     def create_context_for_step(
@@ -233,7 +233,7 @@ class PromptContextManagerBase(ABC):
             result_key: Reference key of the step's result
         """
         self.step_results[step_name] = result_key
-        logger.info(f"Registered result for {step_name}: {result_key}")
+        logger.info("Registered result for %s: %s", result_key, step_name)
 
     def get_all_result_keys(self) -> list[str]:
         """
@@ -248,4 +248,4 @@ class PromptContextManagerBase(ABC):
         """Clean up all contexts and their associated data."""
         for context in self.contexts.values():
             context.cleanup()
-        logger.info(f"Cleaned up {len(self.contexts)} contexts for {self.repo_name}")
+        logger.info("Cleaned up %s contexts for %s", len(self.contexts), self.repo_name)

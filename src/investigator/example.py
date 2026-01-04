@@ -28,7 +28,7 @@ def main():
         arch_file_path = investigate_repo(repo_url)
         print(f"Analysis completed! Check: {arch_file_path}")
 
-    except Exception as e:
+    except (ValueError, RuntimeError, OSError) as e:
         print(f"Error: {e}")
 
     print("\n" + "=" * 50 + "\n")
@@ -46,7 +46,7 @@ def main():
         arch_file_path = investigator.investigate_repository(repo_url)
         print(f"Analysis completed! Check: {arch_file_path}")
 
-    except Exception as e:
+    except (ValueError, RuntimeError, OSError) as e:
         print(f"Error: {e}")
 
     print("\n" + "=" * 50 + "\n")
@@ -66,7 +66,7 @@ def main():
         arch_file_path = investigate_repo(repo_url, log_level="WARNING")
         print(f"Analysis completed! Check: {arch_file_path}")
 
-    except Exception as e:
+    except (ValueError, RuntimeError, OSError) as e:
         print(f"Error: {e}")
 
 

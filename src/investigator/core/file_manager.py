@@ -26,7 +26,7 @@ class FileManager:
             if "extends" in config:
                 # Load the base configuration
                 base_config_path = os.path.normpath(os.path.join(prompts_dir, config["extends"]))
-                self.logger.debug(f"Loading base config from: {base_config_path}")
+                self.logger.debug("Loading base config from: %s", base_config_path)
 
                 with open(base_config_path, encoding="utf-8") as f:
                     base_config = json.load(f)
@@ -54,13 +54,13 @@ class FileManager:
                 return config if isinstance(config, dict) else {"processing_order": []}
 
         except FileNotFoundError as e:
-            self.logger.error(f"Prompts config file not found: {prompts_config_path}")
+            self.logger.error("Prompts config file not found: %s", prompts_config_path)
             raise Exception(f"Prompts config file not found: {prompts_config_path}") from e
         except json.JSONDecodeError as e:
-            self.logger.error(f"Invalid JSON in prompts config: {e!s}")
+            self.logger.error("Invalid JSON in prompts config: {str(e)}")
             raise Exception(f"Invalid JSON in prompts config: {e!s}") from e
         except Exception as e:
-            self.logger.error(f"Failed to read prompts config: {e!s}")
+            self.logger.error("Failed to read prompts config: {str(e)}")
             raise Exception(f"Failed to read prompts config: {e!s}") from e
 
     def read_prompt_file(self, prompts_dir: str, filename: str) -> str | None:
@@ -73,14 +73,14 @@ class FileManager:
             prompt_path = os.path.join(prompts_dir, filename)
 
         if not os.path.exists(prompt_path):
-            self.logger.warning(f"Prompt file not found: {prompt_path}")
+            self.logger.warning("Prompt file not found: %s", prompt_path)
             return None
 
         try:
             with open(prompt_path, encoding="utf-8") as f:
                 return f.read()
-        except Exception as e:
-            self.logger.error(f"Failed to read prompt file {filename}: {e!s}")
+        except Exception:
+            self.logger.error("Failed to read prompt file %s: {str(e)}", filename)
             return None
 
     def cleanup_arch_docs(self, repo_path: str) -> None:
@@ -97,11 +97,11 @@ class FileManager:
                 import shutil
 
                 shutil.rmtree(arch_docs_path)
-                self.logger.info(f"Cleaned up existing arch-docs folder: {arch_docs_path}")
-            except Exception as e:
-                self.logger.warning(f"Failed to clean up existing arch-docs folder: {e!s}")
+                self.logger.info("Cleaned up existing arch-docs folder: %s", arch_docs_path)
+            except Exception:
+                self.logger.warning("Failed to clean up existing arch-docs folder: {str(e)}")
         else:
-            self.logger.debug(f"No existing arch-docs folder found at: {arch_docs_path}")
+            self.logger.debug("No existing arch-docs folder found at: %s", arch_docs_path)
 
     def extract_repository_name_from_analysis(self, analysis: str) -> str:
         """Extract repository name from hl_overview section using [[name]] format."""
@@ -137,7 +137,7 @@ class FileManager:
         # Use repository name in filename
         filename = f"{repo_name}-arch.md"
         arch_file_path = os.path.join(arch_docs_path, filename)
-        self.logger.debug(f"Writing analysis to: {arch_file_path}")
+        self.logger.debug("Writing analysis to: %s", arch_file_path)
 
         header = self._create_analysis_header()
         full_content = header + analysis
@@ -146,12 +146,12 @@ class FileManager:
             with open(arch_file_path, "w", encoding="utf-8") as f:
                 f.write(full_content)
 
-            self.logger.info(f"Architecture analysis written to: {arch_file_path}")
-            self.logger.debug(f"File size: {len(full_content)} characters")
+            self.logger.info("Architecture analysis written to: %s", arch_file_path)
+            self.logger.debug("File size: %s characters", len(full_content))
             return arch_file_path
 
         except Exception as e:
-            self.logger.error(f"Failed to write analysis file: {e!s}")
+            self.logger.error("Failed to write analysis file: {str(e)}")
             raise Exception(f"Failed to write analysis file: {e!s}") from e
 
     def write_prompt_file(self, repo_path: str, step_name: str, prompt_content: str) -> str:
@@ -166,11 +166,11 @@ class FileManager:
             with open(output_path, "w", encoding="utf-8") as f:
                 f.write(prompt_content)
 
-            self.logger.debug(f"Prompt file written to: {output_path}")
+            self.logger.debug("Prompt file written to: %s", output_path)
             return output_path
 
         except Exception as e:
-            self.logger.error(f"Failed to write prompt file: {e!s}")
+            self.logger.error("Failed to write prompt file: {str(e)}")
             raise Exception(f"Failed to write prompt file: {e!s}") from e
 
     def write_intermediate_result(self, repo_path: str, step_name: str, content: str) -> str:
@@ -185,11 +185,11 @@ class FileManager:
             with open(output_path, "w", encoding="utf-8") as f:
                 f.write(content)
 
-            self.logger.debug(f"Intermediate result written to: {output_path}")
+            self.logger.debug("Intermediate result written to: %s", output_path)
             return output_path
 
         except Exception as e:
-            self.logger.error(f"Failed to write intermediate result: {e!s}")
+            self.logger.error("Failed to write intermediate result: {str(e)}")
             raise Exception(f"Failed to write intermediate result: {e!s}") from e
 
     def _create_analysis_header(self) -> str:

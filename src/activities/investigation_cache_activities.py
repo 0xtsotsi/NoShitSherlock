@@ -37,20 +37,20 @@ async def check_if_repo_needs_investigation(input_params: CacheCheckInput) -> Ca
     activity.logger.info(
         f"🎯 ACTIVITY: check_if_repo_needs_investigation called for {input_params.repo_name}"
     )
-    activity.logger.info(f"   repo_url: {input_params.repo_url}")
-    activity.logger.info(f"   repo_path: {input_params.repo_path}")
+    activity.logger.info("   repo_url: %s", input_params.repo_url)
+    activity.logger.info("   repo_path: %s", input_params.repo_path)
     if input_params.prompt_versions:
         activity.logger.info(
             f"   prompt_versions: {len(input_params.prompt_versions)} prompts provided"
         )
         for name, version in input_params.prompt_versions.items():
-            activity.logger.debug(f"      - {name}: v{version}")
+            activity.logger.debug("      - %s: v%s", version, name)
     else:
         activity.logger.warning("   ⚠️  NO PROMPT VERSIONS provided to activity")
 
     try:
         # Get current repository state
-        activity.logger.info(f"📊 Getting current repository state from {input_params.repo_path}")
+        activity.logger.info("📊 Getting current repository state from %s", input_params.repo_path)
         current_state = RepositoryState(
             commit_sha=_get_latest_commit(input_params.repo_path),
             branch_name=_get_current_branch(input_params.repo_path),
@@ -86,8 +86,10 @@ async def check_if_repo_needs_investigation(input_params: CacheCheckInput) -> Ca
             last_investigation=decision.last_investigation,
         )
 
-    except Exception as e:
-        activity.logger.error(f"💥 ACTIVITY ERROR: Error checking if repo needs investigation: {e}")
+    except (ConnectionError, RuntimeError, OSError) as e:
+        activity.logger.error(
+            "💥 ACTIVITY ERROR: Error checking if repo needs investigation: %s", e
+        )
         # On error, default to investigating
         activity.logger.info(
             "⚠️  ACTIVITY FALLBACK: Defaulting to needs_investigation=True due to error"
@@ -100,8 +102,8 @@ async def check_if_repo_needs_investigation(input_params: CacheCheckInput) -> Ca
             activity.logger.info(
                 f"📊 Retrieved commit info despite error: commit={latest_commit[:8]}, branch={branch_name}"
             )
-        except Exception as git_error:
-            activity.logger.warning(f"Could not retrieve git info: {git_error}")
+        except OSError as git_error:
+            activity.logger.warning("Could not retrieve git info: %s", git_error)
             latest_commit = None
             branch_name = None
 
@@ -128,11 +130,11 @@ async def save_investigation_metadata(input_params: SaveMetadataInput) -> SaveMe
     activity.logger.info(
         f"🎯 ACTIVITY: save_investigation_metadata called for {input_params.repo_name}"
     )
-    activity.logger.info(f"   repo_url: {input_params.repo_url}")
+    activity.logger.info("   repo_url: %s", input_params.repo_url)
     activity.logger.info(
         f"   latest_commit: {input_params.latest_commit[:8] if input_params.latest_commit else 'None'}"
     )
-    activity.logger.info(f"   branch_name: {input_params.branch_name}")
+    activity.logger.info("   branch_name: %s", input_params.branch_name)
     activity.logger.info(
         f"   analysis_summary provided: {input_params.analysis_summary is not None}"
     )
@@ -141,7 +143,7 @@ async def save_investigation_metadata(input_params: SaveMetadataInput) -> SaveMe
             f"   prompt_versions: {len(input_params.prompt_versions)} prompts provided"
         )
         for name, version in input_params.prompt_versions.items():
-            activity.logger.debug(f"      - {name}: v{version}")
+            activity.logger.debug("      - %s: v%s", version, name)
     else:
         activity.logger.warning("   ⚠️  NO PROMPT VERSIONS provided to save metadata")
 
@@ -176,7 +178,7 @@ async def save_investigation_metadata(input_params: SaveMetadataInput) -> SaveMe
         )
 
     except Exception as e:
-        activity.logger.error(f"💥 ACTIVITY ERROR: Failed to save investigation metadata: {e}")
+        activity.logger.error("💥 ACTIVITY ERROR: Failed to save investigation metadata: %s", e)
         return SaveMetadataOutput(
             status="error",
             message=f"Failed to save investigation metadata: {e!s}",
@@ -192,8 +194,8 @@ def _get_latest_commit(repo_path: str) -> str:
         repo = git.Repo(repo_path)
         # Get the HEAD commit SHA
         return repo.head.commit.hexsha
-    except Exception as e:
-        logger.error(f"Failed to get latest commit: {e}")
+    except (OSError, git.exc.GitError) as e:
+        logger.error("Failed to get latest commit: %s", e)
         raise
 
 
@@ -208,8 +210,8 @@ def _get_current_branch(repo_path: str) -> str:
         if repo.head.is_detached:
             return f"detached-{repo.head.commit.hexsha[:8]}"
         return repo.active_branch.name
-    except Exception as e:
-        logger.error(f"Failed to get current branch: {e}")
+    except (OSError, git.exc.GitError) as e:
+        logger.error("Failed to get current branch: %s", e)
         raise
 
 
@@ -221,7 +223,7 @@ def _has_uncommitted_changes(repo_path: str) -> bool:
         repo = git.Repo(repo_path)
         # Check if there are any changes (staged or unstaged)
         return repo.is_dirty(untracked_files=True)
-    except Exception as e:
-        logger.error(f"Failed to check for uncommitted changes: {e}")
+    except (OSError, git.exc.GitError) as e:
+        logger.error("Failed to check for uncommitted changes: %s", e)
         # If we can't check, assume there might be changes
         return True
