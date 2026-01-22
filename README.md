@@ -165,7 +165,7 @@ RepoSwarm uses a logical naming convention for all mise tasks:
 
 ### Development Tasks (`dev-*`)
 ```bash
-mise dev-temporal          # Start Temporal server
+mise dev-server          # Start Temporal server
 mise dev-dependencies      # Install Python dependencies
 mise dev-worker           # Start Temporal worker
 mise dev-client           # Run workflow client
@@ -221,7 +221,7 @@ mise test-integration
 ## Related Projects
 
 - 🏗️ [**repo-swarm-sample-results-hub**](https://github.com/royosherove/repo-swarm-sample-results-hub) - The centralized repository where generated `.arch.md` files are stored and queried
-- 📝 [Analysis prompts](src/prompts/shared/) - The AI prompts used to understand different types of codebases
+- 📝 [Analysis prompts](prompts/shared/) - The AI prompts used to understand different types of codebases
 
 ## Understanding the Codebase
 
@@ -287,7 +287,7 @@ For production deployments, you need to deploy Temporal workers that can run on 
 
 ```bash
 # Start Temporal server (local development)
-mise dev-temporal
+mise dev-server
 
 # Run worker in background
 mise dev-worker &
@@ -381,7 +381,7 @@ Cache invalidation happens when:
 mise monitor-temporal
 
 # Start Temporal server if needed
-mise dev-temporal
+mise dev-server
 ```
 
 **Claude API Errors**
@@ -526,7 +526,7 @@ ANTHROPIC_API_KEY=your-api-key-here
 ```bash
 # Set up development environment
 mise dev-dependencies
-mise dev-temporal
+mise dev-server
 
 # Run tests before committing
 mise test-all
